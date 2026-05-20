@@ -797,7 +797,7 @@ BEGIN
             NEW.fecha_emision := NOW();
         END IF;
         IF EXISTS (
-            SELECT 1 FROM orden_compra_detalle
+            SELECT 1 FROM farmacia.orden_compra_detalle
             WHERE orden_compra_id = NEW.id AND costo_unitario IS NULL
         ) THEN
             RAISE EXCEPTION
@@ -827,7 +827,7 @@ BEGIN
     v_orden_id := COALESCE(NEW.orden_compra_id, OLD.orden_compra_id);
 
     SELECT estado INTO v_estado
-    FROM orden_compra WHERE id = v_orden_id;
+    FROM farmacia.orden_compra WHERE id = v_orden_id;
 
     IF v_estado != 'borrador' THEN
         RAISE EXCEPTION
@@ -850,7 +850,7 @@ DECLARE
     v_estado VARCHAR(20);
 BEGIN
     SELECT estado INTO v_estado
-    FROM orden_compra WHERE id = NEW.orden_compra_id;
+    FROM farmacia.orden_compra WHERE id = NEW.orden_compra_id;
 
     IF v_estado IS NULL THEN
         RAISE EXCEPTION '[RECEPCION] Orden de compra id=% no existe.', NEW.orden_compra_id;
@@ -875,7 +875,7 @@ CREATE TRIGGER trg_validar_orden_para_recepcion
 CREATE OR REPLACE FUNCTION fn_bloquear_delete_producto()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM movimiento_inventario WHERE producto_id = OLD.id LIMIT 1) THEN
+    IF EXISTS (SELECT 1 FROM farmacia.movimiento_inventario WHERE producto_id = OLD.id LIMIT 1) THEN
         RAISE EXCEPTION
             '[PRODUCTO] No se puede eliminar el producto id=% porque tiene movimientos. '
             'Use activo = FALSE para desactivarlo.', OLD.id;
@@ -926,23 +926,23 @@ BEGIN
     IF p_numero_lote IS NULL OR LENGTH(TRIM(p_numero_lote)) = 0 THEN
         RAISE EXCEPTION '[ENTRADA] El número de lote no puede estar vacío.';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM usuario  WHERE id = p_usuario_id  AND activo = TRUE) THEN
+    IF NOT EXISTS (SELECT 1 FROM farmacia.usuario  WHERE id = p_usuario_id  AND activo = TRUE) THEN
         RAISE EXCEPTION '[ENTRADA] Usuario id=% no existe o está desactivado.', p_usuario_id;
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM producto WHERE id = p_producto_id AND activo = TRUE) THEN
+    IF NOT EXISTS (SELECT 1 FROM farmacia.producto WHERE id = p_producto_id AND activo = TRUE) THEN
         RAISE EXCEPTION '[ENTRADA] Producto id=% no existe o está desactivado.', p_producto_id;
     END IF;
     IF p_proveedor_id IS NOT NULL THEN
-        IF NOT EXISTS (SELECT 1 FROM proveedor WHERE id = p_proveedor_id AND activo = TRUE) THEN
+        IF NOT EXISTS (SELECT 1 FROM farmacia.proveedor WHERE id = p_proveedor_id AND activo = TRUE) THEN
             RAISE EXCEPTION '[ENTRADA] Proveedor id=% no existe o está desactivado.', p_proveedor_id;
         END IF;
     END IF;
 
-    INSERT INTO lote (producto_id, numero_lote, cantidad, fecha_vencimiento, costo_unitario)
+    INSERT INTO farmacia.lote (producto_id, numero_lote, cantidad, fecha_vencimiento, costo_unitario)
     VALUES (p_producto_id, p_numero_lote, p_cantidad, p_fecha_vencimiento, p_costo_unitario)
     RETURNING id INTO v_lote_id;
 
-    INSERT INTO movimiento_inventario (
+    INSERT INTO farmacia.movimiento_inventario (
         lote_id, producto_id, tipo_movimiento, cantidad,
         costo_unitario, usuario_id, proveedor_id, motivo
     ) VALUES (
@@ -992,7 +992,7 @@ BEGIN
     IF p_motivo IS NULL OR LENGTH(TRIM(p_motivo)) = 0 THEN
         RAISE EXCEPTION '[AJUSTE] El motivo es obligatorio para ajustes y devoluciones.';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM usuario WHERE id = p_usuario_id AND activo = TRUE) THEN
+    IF NOT EXISTS (SELECT 1 FROM farmacia.usuario WHERE id = p_usuario_id AND activo = TRUE) THEN
         RAISE EXCEPTION '[AJUSTE] Usuario id=% no existe o está desactivado.', p_usuario_id;
     END IF;
     IF p_tipo_ajuste = 'devolucion_cliente' AND p_referencia_id IS NULL THEN
@@ -1001,7 +1001,7 @@ BEGIN
     END IF;
 
     SELECT producto_id INTO v_producto_id
-    FROM lote WHERE id = p_lote_id;
+    FROM farmacia.lote WHERE id = p_lote_id;
 
     IF v_producto_id IS NULL THEN
         RAISE EXCEPTION '[AJUSTE] Lote id=% no encontrado.', p_lote_id;
@@ -1009,14 +1009,14 @@ BEGIN
 
     IF p_tipo_ajuste = 'devolucion_cliente' THEN
         IF NOT EXISTS (
-            SELECT 1 FROM lote
+            SELECT 1 FROM farmacia.lote
             WHERE id = p_lote_id AND fecha_vencimiento > CURRENT_DATE
         ) THEN
             RAISE EXCEPTION
                 '[AJUSTE] No se puede devolver al lote id=% porque está vencido.', p_lote_id;
         END IF;
         IF NOT EXISTS (
-            SELECT 1 FROM movimiento_inventario
+            SELECT 1 FROM farmacia.movimiento_inventario
             WHERE id = p_referencia_id
               AND producto_id = v_producto_id
               AND tipo_movimiento = 'salida'
@@ -1027,7 +1027,7 @@ BEGIN
         END IF;
     END IF;
 
-    INSERT INTO movimiento_inventario (
+    INSERT INTO farmacia.movimiento_inventario (
         lote_id, producto_id, tipo_movimiento, cantidad,
         usuario_id, motivo, referencia_id
     ) VALUES (
@@ -1053,7 +1053,7 @@ CREATE OR REPLACE FUNCTION fn_marcar_alerta_leida(
 )
 RETURNS VOID LANGUAGE plpgsql AS $$
 BEGIN
-    UPDATE alerta
+    UPDATE farmacia.alerta
        SET leida               = TRUE,
            fecha_lectura       = NOW(),
            usuario_gestiona_id = p_usuario_gestiona_id

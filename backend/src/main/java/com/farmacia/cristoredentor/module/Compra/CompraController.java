@@ -1,6 +1,11 @@
 package com.farmacia.cristoredentor.module.Compra;
 
-import com.farmacia.cristoredentor.module.Compra.dto.*;
+import com.farmacia.cristoredentor.module.OrdenCompra.dto.OrdenCompraCreateDTO;
+import com.farmacia.cristoredentor.module.OrdenCompra.dto.OrdenCompraResponseDTO;
+import com.farmacia.cristoredentor.module.RecepcionDetalle.dto.*;
+import com.farmacia.cristoredentor.module.RecepcionMercaderia.dto.RecepcionMercaderiaCreateDTO;
+import com.farmacia.cristoredentor.module.RecepcionMercaderia.dto.RecepcionMercaderiaResponseDTO;
+
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

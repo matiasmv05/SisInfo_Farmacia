@@ -38,6 +38,6 @@ public class ProductoCreateDTO {
     @Min(value = 1, message = "El stock máximo debe ser al menos 1")
     private Integer stockMaximo;
 
-    @NotBlank(message = "La clasificación ABC es obligatoria")
+    
     private String clasificacionABC;
 }

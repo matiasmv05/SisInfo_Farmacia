@@ -1,29 +1,25 @@
-package com.farmacia.cristoredentor.module.Compra.dto;
-
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.NotBlank;
+package com.farmacia.cristoredentor.module.RecepcionDetalle.dto;
 
 import java.time.LocalDate;
 
-public class RecepcionDetalleCreateDTO {
-    @NotNull
+public class RecepcionDetalleResponseDTO {
+    private Long id;
     private Long ordenDetalleId;
-
-    @NotNull
-    @Min(1)
+    private Long productoId;
+    private String productoNombre;
     private Integer cantidadRecibida;
-
-    @NotBlank
     private String numeroLote;
-
-    @NotNull
     private LocalDate fechaVencimiento;
-
     private String observacionItem;
 
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
     public Long getOrdenDetalleId() { return ordenDetalleId; }
     public void setOrdenDetalleId(Long ordenDetalleId) { this.ordenDetalleId = ordenDetalleId; }
+    public Long getProductoId() { return productoId; }
+    public void setProductoId(Long productoId) { this.productoId = productoId; }
+    public String getProductoNombre() { return productoNombre; }
+    public void setProductoNombre(String productoNombre) { this.productoNombre = productoNombre; }
     public Integer getCantidadRecibida() { return cantidadRecibida; }
     public void setCantidadRecibida(Integer cantidadRecibida) { this.cantidadRecibida = cantidadRecibida; }
     public String getNumeroLote() { return numeroLote; }

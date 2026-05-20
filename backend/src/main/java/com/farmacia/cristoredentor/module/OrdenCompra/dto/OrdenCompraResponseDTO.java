@@ -1,5 +1,5 @@
-package com.farmacia.cristoredentor.module.Compra.dto;
-
+package com.farmacia.cristoredentor.module.OrdenCompra.dto;
+import com.farmacia.cristoredentor.module.OrdenCompraDetalle.dto.OrdenCompraDetalleResponseDTO;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
