@@ -1,9 +1,11 @@
-package com.farmacia.cristoredentor.module.Compra.dto;
+package com.farmacia.cristoredentor.module.RecepcionMercaderia.dto;
 
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
+
+import com.farmacia.cristoredentor.module.RecepcionDetalle.dto.RecepcionDetalleCreateDTO;
 
 public class RecepcionMercaderiaCreateDTO {
     @NotNull

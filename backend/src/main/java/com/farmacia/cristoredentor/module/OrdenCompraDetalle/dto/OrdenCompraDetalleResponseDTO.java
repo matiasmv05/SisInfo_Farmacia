@@ -1,4 +1,4 @@
-package com.farmacia.cristoredentor.module.Compra.dto;
+package com.farmacia.cristoredentor.module.OrdenCompraDetalle.dto;
 
 import java.math.BigDecimal;
 

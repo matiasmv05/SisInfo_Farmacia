@@ -49,7 +49,7 @@ public class CategoriaController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
 
-        service.delete(id);
+        service.desactivarCategoria(id);
 
         return ResponseEntity.noContent().build();
     }

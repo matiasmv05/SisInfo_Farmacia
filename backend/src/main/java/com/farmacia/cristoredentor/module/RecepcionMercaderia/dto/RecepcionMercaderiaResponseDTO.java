@@ -1,4 +1,6 @@
-package com.farmacia.cristoredentor.module.Compra.dto;
+package com.farmacia.cristoredentor.module.RecepcionMercaderia.dto;
+import com.farmacia.cristoredentor.module.OrdenCompra.dto.OrdenCompraResponseDTO;
+import com.farmacia.cristoredentor.module.RecepcionDetalle.dto.RecepcionDetalleResponseDTO;
 
 import java.time.Instant;
 import java.util.List;

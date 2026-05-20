@@ -1,4 +1,4 @@
-package com.farmacia.cristoredentor.module.Compra;
+package com.farmacia.cristoredentor.module.OrdenCompra;
 
 import com.farmacia.cristoredentor.Entity.OrdenCompra;
 import org.springframework.data.jpa.repository.JpaRepository;
