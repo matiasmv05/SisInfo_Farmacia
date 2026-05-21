@@ -17,7 +17,7 @@ import java.util.List;
 public class RecepcionMercaderia {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
     @ManyToOne
     @JoinColumn(name = "orden_compra_id", nullable = false)

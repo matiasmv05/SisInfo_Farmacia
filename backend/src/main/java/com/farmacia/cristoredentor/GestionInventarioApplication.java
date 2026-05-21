@@ -6,8 +6,12 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableJpaAuditing 
+@EnableScheduling
 public class GestionInventarioApplication {
 
     private static final Logger log = LoggerFactory.getLogger(GestionInventarioApplication.class);

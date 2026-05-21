@@ -1,46 +1,51 @@
 package com.farmacia.cristoredentor.Entity;
-import java.time.Instant;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.Instant;
 
 @Entity
 @Table(name = "proveedor", schema = "farmacia")
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Proveedor {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
-    @Column(name = "nombre", nullable = false)
+    @Column(nullable = false, unique = true, length = 150)
     private String nombre;
 
-    @Column(name = "contacto_nombre")
+    @Column(name = "contacto_nombre", length = 100)
     private String contactoNombre;
 
-    @Column(name = "telefono")
+    @Column(length = 30)
     private String telefono;
 
-    @Column(name = "email")
-    private String email;
+    @Column(length = 100)
+    private String correo;
 
-    @Column(name = "direccion")
+    @Column(length = 250)
     private String direccion;
 
-    @Column(name = "activo", nullable = false)
-    private boolean activo;
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean activo = true;
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "proveedor")
-    private java.util.List<ProductoProveedor> productos;
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
 }

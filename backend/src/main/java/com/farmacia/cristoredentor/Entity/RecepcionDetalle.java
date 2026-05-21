@@ -15,7 +15,7 @@ import java.time.LocalDate;
 public class RecepcionDetalle {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
     @ManyToOne
     @JoinColumn(name = "recepcion_id", nullable = false)

@@ -1,13 +1,28 @@
 package com.farmacia.cristoredentor.Entity;
 
-import com.farmacia.cristoredentor.Entity.Categoria;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
-import jakarta.persistence.*;
-import jakarta.persistence.criteria.CriteriaBuilder.In;
-import lombok.*;
-
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+
+import com.farmacia.cristoredentor.Enum.ClasificacionABC;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 
 @Entity
 @Table(name = "producto", schema = "farmacia")
@@ -17,48 +32,58 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Producto {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
-    @Column(name = "nombre", nullable = false)
+    @Column(name = "nombre", nullable = false, length = 150)
     private String nombre;
 
-    @JsonIgnore
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "categoria_id", nullable = false)
-    private Categoria categoria;
+    private Categoria categoriaid;
 
-    @Column(name = "laboratorio", nullable = false)
+    @Column(name = "laboratorio", nullable = false, length = 100)
     private String laboratorio;
 
-    @Column(name = "concentracion", nullable = false)
+    @Column(name = "concentracion", length = 50)
     private String concentracion;
 
-    @Column(name = "presentacion", nullable = false)
+    @Column(name = "presentacion", length = 80)
     private String presentacion;
 
-    @Column(name = "precio_costo", nullable = false)
+    @Column(name = "precio_costo", nullable = false, precision = 10, scale = 2)
     private BigDecimal precioCosto;
 
-    @Column(name = "precio_venta", nullable = false)
+    @Column(name = "precio_venta", nullable = false, precision = 10, scale = 2)
     private BigDecimal precioVenta;
 
     @Column(name = "stock_minimo", nullable = false)
     private Integer stockMinimo;
 
-    @Column(name = "stock_maximo", nullable = false)
+    @Column(name = "stock_maximo")
     private Integer stockMaximo;
 
-    @Column(name = "clasificacion_abc", nullable = false)
-    private String clasificacionABC;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "clasificacion_abc", length = 1)
+    private ClasificacionABC clasificacionAbc;
 
-    @Column(name = "stock_total", nullable = false )
-    private Integer stockTotal;
+    @Column(name = "stock_total", nullable = false)
+    private int stockTotal;
+
+    @Column(name = "dias_minimos_venta")
+    private Integer diasMinimosVenta;
 
     @Column(name = "activo", nullable = false)
     private boolean activo;
 
-    @OneToMany(mappedBy = "producto")
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
+    @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY)
     private java.util.List<ProductoProveedor> proveedores;
 }

@@ -1,7 +1,13 @@
 package com.farmacia.cristoredentor.module.Usuario;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.modelmapper.ModelMapper;
+  import org.springframework.data.domain.Page;
+  import org.springframework.data.domain.PageRequest;
+  import org.springframework.data.domain.Pageable;
   import org.springframework.http.HttpStatus;
   import org.springframework.security.crypto.password.PasswordEncoder;
   import org.springframework.stereotype.Service;
@@ -12,8 +18,8 @@ import java.util.List;
   import com.farmacia.cristoredentor.module.Usuario.dto.ActualizarUsuarioDto;
   import com.farmacia.cristoredentor.module.Usuario.dto.crearUsuarioDto;
   import com.farmacia.cristoredentor.module.Usuario.dto.loginUsuarioDto;
+  import com.farmacia.cristoredentor.module.Usuario.dto.usuarioRequestDto;
   import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
-  import  com.farmacia.cristoredentor.utils.Query;
 
 @Service
 @Transactional
@@ -21,99 +27,139 @@ public class usuarioService {
 
     private final usuarioRepository repo;
     private final PasswordEncoder passwordEncoder;
+    private final ModelMapper modelMapper;
 
-    public usuarioService(usuarioRepository repo,PasswordEncoder passwordEncoder) {
+    public usuarioService(usuarioRepository repo,PasswordEncoder passwordEncoder,ModelMapper modelMapper) {
         this.repo = repo;
         this.passwordEncoder = passwordEncoder;
+        this.modelMapper = modelMapper;
     }
 
     // Crear
-    public Usuario crearUsuario(crearUsuarioDto dto) {
-        if (repo.existsByEmail(dto.getEmail()))
+    public usuarioRequestDto crearUsuario(crearUsuarioDto dto) {
+        if (repo.existsByEmail(dto.getEmail()) && dto.getEmail() != null)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email ya registrado");
-        if (repo.existsByTelefono(dto.getNumeroTelefono()))
+        if (repo.existsByTelefono(dto.getTelefono()))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Teléfono ya registrado");
 
-        Usuario u = new Usuario();
-        u.setNombreCompleto(dto.getNombreCompleto());
-        u.setEmail(dto.getEmail());
-        u.setPasswordHash(passwordEncoder.encode(dto.getPassword())); // Assuming the DTO already contains the hashed password
-        u.setRol(dto.getRol());
-        u.setTelefono(dto.getNumeroTelefono());
-        u.setActivo(true);
-        return repo.save(u);
+        Usuario nuevoUsuario = Usuario.builder()
+            .nombreCompleto(dto.getNombreCompleto())
+            .email(dto.getEmail())
+            .passwordHash(passwordEncoder.encode(dto.getPasswordHash()))
+            .rol(dto.getRol())
+            .telefono(dto.getTelefono())
+            .build();
+
+            repo.save(nuevoUsuario);
+
+        usuarioRequestDto usuarioRequest = modelMapper.map(nuevoUsuario, usuarioRequestDto.class);
+        return usuarioRequest;
+
     }
 
-    // Leer por id
+    
+    // Listar todos activos sin paginación
     @Transactional(readOnly = true)
-    public Usuario obtenerPorId(Long id){
-        return repo.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
-        }
-    // Leer todos activos
-    @Transactional(readOnly = true)
-    public List<Usuario> listarActivos() {
-        return repo.findByActivoTrue();
+       public List<usuarioRequestDto> listarActivos() {
+    return repo.findByActivoTrue()
+           .stream()
+           .map(u -> modelMapper.map(u, usuarioRequestDto.class))
+           .collect(Collectors.toList()); // lista vacía es respuesta válida
+}
+
+
+
+    // Leer por id (solo activo)
+     @Transactional(readOnly = true)
+        public Usuario buscarEntidadPorId(Integer id) {
+            return repo.findById(id)
+               .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
     }
+
+
+
+
+    // Leer por id request_dto
+    @Transactional(readOnly = true)
+    public usuarioRequestDto obtenerPorId_Request(Integer id){
+        return repo.findById(id)
+               .map(u-> modelMapper.map(u, usuarioRequestDto.class))
+               .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+        }
+
+
 
     // Leer todos activos con paginación
+    
     @Transactional(readOnly = true)
-    public PaginatedResponseDto<Usuario> listarActivosPaginado(Integer page, Integer limit) {
-        Query.Pagination pagination = Query.normalizePage(page, limit);
-        List<Usuario> allUsuarios = repo.findByActivoTrue();
-        int totalElements = allUsuarios.size();
-        
-        int offset = pagination.getOffset();
-        int endIndex = Math.min(offset + pagination.getLimit(), allUsuarios.size());
-        
-        List<Usuario> paginatedData = allUsuarios.subList(offset, endIndex);
-        
-        return new PaginatedResponseDto<>(paginatedData, pagination.getPage(), pagination.getLimit(), totalElements);
-    }
+    public PaginatedResponseDto<usuarioRequestDto> listarActivosPaginado(Integer page, Integer limit){
+    Pageable pageable = PageRequest.of(page, limit);
+    Page<Usuario> resultado = repo.findByActivoTrue(pageable);
+
+    List<usuarioRequestDto> data = resultado.getContent()
+        .stream()
+        .map(u -> modelMapper.map(u, usuarioRequestDto.class))
+        .toList();
+
+    return new PaginatedResponseDto<>(data, page, limit, (int) resultado.getTotalElements());
+}
+
 
     // Actualizar — solo campos no nulos
-    public Usuario actualizarUsuario(ActualizarUsuarioDto dto, Long id){
-        Usuario u = obtenerPorId(id);
+
+
+    public usuarioRequestDto actualizarUsuario(ActualizarUsuarioDto dto, Integer id){
+        Usuario u = buscarEntidadPorId(id);
 
         if (dto.getNombreCompleto() != null)
             u.setNombreCompleto(dto.getNombreCompleto());
 
-        if (dto.getEmail() != null ) {
-           if (repo.existsByEmail(dto.getEmail()))
-              throw new ResponseStatusException(HttpStatus.CONFLICT, "Email ya registrado");
+        if (dto.getEmail() != null) {
+             if (repo.existsByEmailAndIdNot(dto.getEmail(), id)) {
+                  throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Email ya registrado"
+                );
+         }
             u.setEmail(dto.getEmail());
+        }     
+
+
+        if (dto.getPasswordHash() != null && !dto.getPasswordHash().isBlank())
+             u.setPasswordHash(passwordEncoder.encode(dto.getPasswordHash()));
+            
+        if (dto.getTelefono() != null) {
+            if (repo.existsByTelefonoAndIdNot(dto.getTelefono(), id)) {
+                throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Teléfono ya registrado"
+                );
+            }
+
+            u.setTelefono(dto.getTelefono());
         }
 
-        if (dto.getPassword() != null && !dto.getPassword().isBlank())
-            u.setPasswordHash(dto.getPassword());
-
-        if (dto.getRol() != null)
-            u.setRol(dto.getRol());
-
-        if (dto.getNumeroTelefono() != null)
-                if (repo.existsByTelefono(dto.getNumeroTelefono()))
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Teléfono ya registrado");
-            u.setTelefono(dto.getNumeroTelefono());
-
-        return repo.save(u);
+        usuarioRequestDto usuarioRequest = modelMapper.map(u, usuarioRequestDto.class);
+        repo.save(u);
+        return usuarioRequest;
     }
 
-    // Desactivar — borrado lógico
-    public void desactivarUsuario(Long id) {
-        Usuario u = obtenerPorId(id);
+    
+    public void desactivarUsuario(Integer id) {
+        Usuario u = buscarEntidadPorId(id);
         u.setActivo(false);
         repo.save(u);
    }
 
     // Login — busca activo, verifica contraseña
     @Transactional(readOnly = true)
-    public Usuario login(loginUsuarioDto dto){
-        Usuario u = repo.findByEmailAndActivoTrue(dto.getEmail())
-            .orElseThrow(() ->  new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
+    public usuarioRequestDto login(loginUsuarioDto dto) {
+    Usuario u = repo.findByEmailAndActivoTrue(dto.getEmail())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
 
-        if (!passwordEncoder.matches(dto.getPassword(), u.getPasswordHash()))
-             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Contraseña incorrecta");
+    if (!passwordEncoder.matches(dto.getPasswordHash(), u.getPasswordHash()))
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
 
-        return u;
-    }
+    return modelMapper.map(u, usuarioRequestDto.class);
+}
 }

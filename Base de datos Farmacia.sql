@@ -64,7 +64,7 @@ CREATE TABLE usuario (
     email            varchar(150)    NOT NULL,
 
     CONSTRAINT ck_usuario_rol
-        CHECK (rol IN ('administrador', 'operador')),
+        CHECK (rol IN ('ADMINISTRADOR', 'OPERADOR')),
 
     CONSTRAINT ck_usuario_password_hash_len
         CHECK (LENGTH(password_hash) >= 60)
@@ -1086,7 +1086,7 @@ INSERT INTO usuario (nombre_completo, password_hash, rol, telefono,email)
 VALUES (
     'Administrador del Sistema',
     '$2b$12$REEMPLAZAR.ESTE.HASH.CON.UNO.GENERADO.ANTES.DE.PRODUCCION',
-    'administrador',
+    'ADMINISTRADOR',
     75912252,
     'administrador@gmail.com'
 );

@@ -1,9 +1,20 @@
 package com.farmacia.cristoredentor.Entity;
 
-import jakarta.persistence.*;
-import lombok.*;
+import java.time.OffsetDateTime;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "producto_proveedor", schema = "farmacia")
@@ -14,19 +25,22 @@ import java.time.LocalDateTime;
 @Builder
 public class ProductoProveedor {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @EmbeddedId
+    private ProductoProveedorId id;
 
-    @ManyToOne
-    @JoinColumn(name = "producto_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("productoId")
+    @JoinColumn(name = "producto_id", nullable = false)
     private Producto producto;
 
-    @ManyToOne
-    @JoinColumn(name = "proveedor_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("proveedorId")
+    @JoinColumn(name = "proveedor_id", nullable = false)
     private Proveedor proveedor;
 
+    @Column(name = "es_principal", nullable = false)
     private boolean esPrincipal;
 
-    private LocalDateTime createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
 }

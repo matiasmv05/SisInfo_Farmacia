@@ -1,16 +1,25 @@
 package com.farmacia.cristoredentor.module.Producto.dto;
 
-import lombok.*;
-
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class ProductoResponseDTO {
-    private Long id;
+
+    private Integer id;
     private String nombre;
-    private String categoriaNombre;
+    private Integer categoriaId;
+    private String categoria;
     private String laboratorio;
     private String concentracion;
     private String presentacion;
@@ -18,8 +27,10 @@ public class ProductoResponseDTO {
     private BigDecimal precioVenta;
     private Integer stockMinimo;
     private Integer stockMaximo;
-    private String clasificacionABC;
     private Integer stockTotal;
+    private String clasificacionAbc;
+    private Integer diasMinimosVenta;
     private boolean activo;
-    
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
 }
