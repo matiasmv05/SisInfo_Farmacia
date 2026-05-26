@@ -1,5 +1,6 @@
 package com.farmacia.cristoredentor.module.Reporte.dto;
 
+import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,11 +13,9 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReporteCreateDTO {
-    private String nombreReporte;
     private String tipoReporte;
-    private String descripcion;
+    private LocalDate fechaInicioPeriodo;
+    private LocalDate fechaFinPeriodo;
+    private String parametrosJson;
     private Long usuarioId;
-    private String rutaArchivo;
-    private String formato;
-    private String observaciones;
 }

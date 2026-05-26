@@ -1,6 +1,6 @@
 package com.farmacia.cristoredentor.module.Reporte;
 
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -48,15 +48,10 @@ public class ReporteController {
         return ResponseEntity.ok(service.obtenerPorTipo(tipoReporte));
     }
 
-    @GetMapping("/estado/{estado}")
-    public ResponseEntity<List<ReporteResponseDTO>> obtenerPorEstado(@PathVariable String estado) {
-        return ResponseEntity.ok(service.obtenerPorEstado(estado));
-    }
-
     @GetMapping("/fechas")
     public ResponseEntity<List<ReporteResponseDTO>> obtenerPorRangoFechas(
-            @RequestParam Instant inicio,
-            @RequestParam Instant fin) {
+            @RequestParam LocalDate inicio,
+            @RequestParam LocalDate fin) {
         return ResponseEntity.ok(service.obtenerPorRangoFechas(inicio, fin));
     }
 

@@ -1,6 +1,7 @@
 package com.farmacia.cristoredentor.module.Reporte;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import com.farmacia.cristoredentor.Entity.ReporteExportado;
@@ -21,15 +22,11 @@ public class ReporteService {
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         ReporteExportado reporte = ReporteExportado.builder()
-                .nombreReporte(dto.getNombreReporte())
                 .tipoReporte(dto.getTipoReporte())
-                .descripcion(dto.getDescripcion())
+                .fechaInicioPeriodo(dto.getFechaInicioPeriodo())
+                .fechaFinPeriodo(dto.getFechaFinPeriodo())
+                .parametrosJson(dto.getParametrosJson())
                 .usuario(usuario)
-                .fechaExportacion(Instant.now())
-                .rutaArchivo(dto.getRutaArchivo())
-                .formato(dto.getFormato())
-                .estado("completado")
-                .observaciones(dto.getObservaciones())
                 .build();
 
         repository.save(reporte);
@@ -60,14 +57,8 @@ public class ReporteService {
                 .toList();
     }
 
-    public List<ReporteResponseDTO> obtenerPorEstado(String estado) {
-        return repository.findByEstado(estado).stream()
-                .map(this::mapearAResponse)
-                .toList();
-    }
-
-    public List<ReporteResponseDTO> obtenerPorRangoFechas(Instant inicio, Instant fin) {
-        return repository.findByFechaExportacionBetween(inicio, fin).stream()
+    public List<ReporteResponseDTO> obtenerPorRangoFechas(LocalDate inicio, LocalDate fin) {
+        return repository.findByFechaInicioPeriodoBetween(inicio, fin).stream()
                 .map(this::mapearAResponse)
                 .toList();
     }
@@ -81,17 +72,12 @@ public class ReporteService {
     private ReporteResponseDTO mapearAResponse(ReporteExportado reporte) {
         return ReporteResponseDTO.builder()
                 .id(reporte.getId())
-                .nombreReporte(reporte.getNombreReporte())
                 .tipoReporte(reporte.getTipoReporte())
-                .descripcion(reporte.getDescripcion())
+                .fechaInicioPeriodo(reporte.getFechaInicioPeriodo())
+                .fechaFinPeriodo(reporte.getFechaFinPeriodo())
+                .parametrosJson(reporte.getParametrosJson())
                 .nombreUsuario(reporte.getUsuario().getNombreCompleto())
                 .fechaExportacion(reporte.getFechaExportacion())
-                .rutaArchivo(reporte.getRutaArchivo())
-                .formato(reporte.getFormato())
-                .estado(reporte.getEstado())
-                .observaciones(reporte.getObservaciones())
-                .createdAt(reporte.getCreatedAt())
-                .updatedAt(reporte.getUpdatedAt())
                 .build();
     }
 }

@@ -1,6 +1,7 @@
 package com.farmacia.cristoredentor.Entity;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,14 +21,17 @@ public class ReporteExportado {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @Column(name = "nombre_reporte", nullable = false)
-    private String nombreReporte;
-
-    @Column(name = "tipo_reporte", nullable = false)
+    @Column(name = "tipo_reporte", nullable = false, length = 50)
     private String tipoReporte;
 
-    @Column(name = "descripcion")
-    private String descripcion;
+    @Column(name = "fecha_inicio_periodo")
+    private LocalDate fechaInicioPeriodo;
+
+    @Column(name = "fecha_fin_periodo")
+    private LocalDate fechaFinPeriodo;
+
+    @Column(name = "parametros_json", columnDefinition = "jsonb")
+    private String parametrosJson;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
@@ -36,32 +40,8 @@ public class ReporteExportado {
     @Column(name = "fecha_exportacion", nullable = false)
     private Instant fechaExportacion;
 
-    @Column(name = "ruta_archivo")
-    private String rutaArchivo;
-
-    @Column(name = "formato", nullable = false)
-    private String formato;
-
-    @Column(name = "estado", nullable = false)
-    private String estado;
-
-    @Column(name = "observaciones")
-    private String observaciones;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at")
-    private Instant updatedAt;
-
     @PrePersist
     protected void onCreate() {
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = Instant.now();
+        this.fechaExportacion = Instant.now();
     }
 }
