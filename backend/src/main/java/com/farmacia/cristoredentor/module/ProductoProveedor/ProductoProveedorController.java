@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -29,6 +30,7 @@ public class ProductoProveedorController {
     }
 
     // POST /api/productos/{productoId}/proveedores
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping
     public ResponseEntity<ProductoProveedorDetalleDTO> asignar(
             @PathVariable Integer productoId,
@@ -38,6 +40,7 @@ public class ProductoProveedorController {
     }
 
     // GET /api/productos/{productoId}/proveedores
+    @PreAuthorize("hasRole('ADMINISTRADOR')")   
     @GetMapping
     public ResponseEntity<List<ProductoProveedorDetalleDTO>> listar(
             @PathVariable Integer productoId) {
@@ -45,6 +48,7 @@ public class ProductoProveedorController {
     }
 
     // PATCH /api/productos/{productoId}/proveedores/{proveedorId}/principal
+        @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PatchMapping("/{proveedorId}/principal")
     public ResponseEntity<ProductoProveedorDetalleDTO> cambiarPrincipal(
             @PathVariable Integer productoId,
@@ -53,6 +57,7 @@ public class ProductoProveedorController {
     }
 
     // DELETE /api/productos/{productoId}/proveedores/{proveedorId}
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/{proveedorId}")
     public ResponseEntity<Void> eliminar(
             @PathVariable Integer productoId,

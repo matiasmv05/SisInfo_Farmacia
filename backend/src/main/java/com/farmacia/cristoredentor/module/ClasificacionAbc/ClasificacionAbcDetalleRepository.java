@@ -1,14 +1,14 @@
 package com.farmacia.cristoredentor.module.ClasificacionAbc;
 
-import com.farmacia.cristoredentor.Entity.ClasificacionAbcDetalle;
+import java.time.OffsetDateTime;
+import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-
+import com.farmacia.cristoredentor.Entity.ClasificacionAbcDetalle;
 import com.farmacia.cristoredentor.Enum.EstadoLote;
 import com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ValorInventarioProductoDTO;
 
@@ -16,16 +16,36 @@ import com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ValorInventarioPr
 public interface ClasificacionAbcDetalleRepository
         extends JpaRepository<ClasificacionAbcDetalle, Integer> {
 
-    @Query("""
-        SELECT l.producto.id        AS productoId,
-               SUM(l.cantidad * l.costoUnitario) AS valorInventario
-        FROM Lote l
-        WHERE l.estado = :estado
-        GROUP BY l.producto.id
-        ORDER BY valorInventario DESC
-        """)
-    List<ValorInventarioProductoDTO> calcularValorInventarioPorProducto(
-        @Param("estado") EstadoLote estado);
+  @Query("""
+    SELECT new com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ValorInventarioProductoDTO(
+        l.producto.id,
+        SUM(l.cantidad * l.costoUnitario)
+    )
+    FROM Lote l
+    WHERE l.estado = :estado
+    GROUP BY l.producto.id
+    ORDER BY SUM(l.cantidad * l.costoUnitario) DESC
+    """)
+List<ValorInventarioProductoDTO> calcularValorInventarioPorProducto(
+    @Param("estado") EstadoLote estado);
+
+@Query("""
+    SELECT new com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ValorInventarioProductoDTO(
+        m.producto.id,
+        CAST(SUM(m.cantidad) AS big_decimal)
+    )
+    FROM MovimientoInventario m
+    WHERE m.tipoMovimiento IN (
+        com.farmacia.cristoredentor.Enum.TipoMovimiento.salida,
+        com.farmacia.cristoredentor.Enum.TipoMovimiento.ajuste_salida
+    )
+    AND m.fechaHora >= :desde
+    GROUP BY m.producto.id
+    ORDER BY SUM(m.cantidad) DESC
+    """)
+List<ValorInventarioProductoDTO> calcularValorRotacionPorProducto(
+    @Param("desde") OffsetDateTime desde
+);
 
     List<ClasificacionAbcDetalle> findByHistorialIdOrderByPorcentajeAcumuladoAsc(
         Integer historialId);

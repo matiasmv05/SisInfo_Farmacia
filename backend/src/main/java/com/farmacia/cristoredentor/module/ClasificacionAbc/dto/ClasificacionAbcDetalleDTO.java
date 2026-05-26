@@ -18,7 +18,7 @@ public class ClasificacionAbcDetalleDTO {
     private Integer productoId;
     private String productoNombre;
     private String laboratorio;
-    private BigDecimal valorInventario;
+    private BigDecimal unidadesDespachadas;
     private BigDecimal porcentajeIndividual;
     private BigDecimal porcentajeAcumulado;
     private String clasificacion;

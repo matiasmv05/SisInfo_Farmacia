@@ -1,10 +1,26 @@
 package com.farmacia.cristoredentor.Entity;
 
-import com.farmacia.cristoredentor.Enum.TipoMovimiento;
-import jakarta.persistence.*;
-import lombok.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+
+import com.farmacia.cristoredentor.Enum.TipoMovimiento;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "movimiento_inventario", schema = "farmacia")
@@ -50,11 +66,6 @@ public class MovimientoInventario {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "orden_compra_id")
     private OrdenCompra ordenCompra;
-
-    // referencia_id es polimórfico (movimiento o orden según tipo)
-    // No tiene FK en BD, lo mantenemos como Long simple
-    @Column(name = "referencia_id")
-    private Integer referenciaId;
 
     @Column(name = "fecha_hora", nullable = false, updatable = false)
     private OffsetDateTime fechaHora;

@@ -1,11 +1,12 @@
 package com.farmacia.cristoredentor.module.Lote.dto;
 
-import lombok.Getter;
-import lombok.Setter;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -20,7 +21,7 @@ public class LoteDetalleDTO {
     private BigDecimal costoUnitario;
     private String  estado;
     private Integer ordenCompraId;
-    private Instant fechaRegistro;
+    private OffsetDateTime fechaRegistro;
     private Instant fechaBaja;
     private String  motivoBaja;
 }

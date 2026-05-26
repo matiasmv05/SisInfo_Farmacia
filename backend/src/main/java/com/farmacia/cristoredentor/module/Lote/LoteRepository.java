@@ -1,17 +1,21 @@
 package com.farmacia.cristoredentor.module.Lote;
 
-import com.farmacia.cristoredentor.Entity.Lote;
-import com.farmacia.cristoredentor.Enum.EstadoLote;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
+import com.farmacia.cristoredentor.Entity.Lote;
+import com.farmacia.cristoredentor.Enum.EstadoLote;
+
+import jakarta.persistence.LockModeType;
 
 @Repository
 public interface LoteRepository extends JpaRepository<Lote, Integer> {
@@ -34,6 +38,7 @@ public interface LoteRepository extends JpaRepository<Lote, Integer> {
     );
 
     // Lotes próximos a vencer (para generación de alertas)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         SELECT l FROM Lote l
         WHERE l.estado = 'ACTIVO'
@@ -52,6 +57,7 @@ public interface LoteRepository extends JpaRepository<Lote, Integer> {
     // Buscar lote específico (para recepciones parciales: upsert manual)
     Optional<Lote> findByProductoIdAndNumeroLote(Integer productoId, String numeroLote);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
     SELECT l FROM Lote l
     JOIN FETCH l.producto p
@@ -59,6 +65,12 @@ public interface LoteRepository extends JpaRepository<Lote, Integer> {
     AND l.cantidad > 0
     AND l.fechaVencimiento <= :fechaLimite
     """)
-List<Lote> findLotesActivosConVencimientoProximo(
+    List<Lote> findLotesActivosConVencimientoProximo(
     @Param("fechaLimite") LocalDate fechaLimite);
+
+    @Query("SELECT COALESCE(SUM(l.cantidad), 0) FROM Lote l " +
+       "WHERE l.producto.id = :productoId AND l.estado = 'activo'")
+     int calcularStockReal(@Param("productoId") Integer productoId);
+
+     
 }

@@ -1,9 +1,10 @@
 package com.farmacia.cristoredentor.module.OrdenCompra;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
-import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -14,11 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.farmacia.cristoredentor.Entity.OrdenCompra;
-import com.farmacia.cristoredentor.Entity.OrdenCompra.EstadoOrden;
 import com.farmacia.cristoredentor.Entity.OrdenCompraDetalle;
 import com.farmacia.cristoredentor.Entity.Producto;
 import com.farmacia.cristoredentor.Entity.Proveedor;
 import com.farmacia.cristoredentor.Entity.Usuario;
+import com.farmacia.cristoredentor.Enum.EstadoOrden;
 import com.farmacia.cristoredentor.module.OrdenCompra.dto.actualizarItemCostoDto;
 import com.farmacia.cristoredentor.module.OrdenCompra.dto.crearOrdenCompraDto;
 import com.farmacia.cristoredentor.module.OrdenCompra.dto.ordenCompraItemDto;
@@ -37,18 +38,15 @@ public class ordenCompraService {
     private final ProveedorRepository   proveedorRepo;
     private final ProductoRepository    productoRepo;
     private final usuarioRepository     usuarioRepo;
-    private final ModelMapper           modelMapper;
 
     public ordenCompraService(OrdenCompraRepository ordenRepo,
                               ProveedorRepository proveedorRepo,
                               ProductoRepository productoRepo,
-                              usuarioRepository usuarioRepo,
-                              ModelMapper modelMapper) {
-        this.ordenRepo    = ordenRepo;
+                              usuarioRepository usuarioRepo) {
+        this.ordenRepo     = ordenRepo;
         this.proveedorRepo = proveedorRepo;
         this.productoRepo  = productoRepo;
         this.usuarioRepo   = usuarioRepo;
-        this.modelMapper   = modelMapper;
     }
 
     // -------------------------------------------------------------------------
@@ -59,7 +57,8 @@ public class ordenCompraService {
         Proveedor proveedor = proveedorRepo.findById(dto.getProveedorId())
             .filter(Proveedor::isActivo)
             .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Proveedor activo no encontrado: " + dto.getProveedorId()));
+                HttpStatus.NOT_FOUND,
+                "Proveedor activo no encontrado: " + dto.getProveedorId()));
 
         Usuario usuario = usuarioRepo.findById(usuarioId)
             .orElseThrow(() -> new ResponseStatusException(
@@ -73,39 +72,108 @@ public class ordenCompraService {
 
         for (ordenCompraItemRequestDto item : dto.getItems()) {
             Producto producto = buscarProductoActivo(item.getProductoId());
-
-            OrdenCompraDetalle detalle = OrdenCompraDetalle.builder()
-                .producto(producto)
-                .cantidadSolicitada(item.getCantidadSolicitada())
-                .costoUnitario(item.getCostoUnitario())
-                .build();
-
-            orden.agregarDetalle(detalle);
+            agregarDetalleAOrden(orden, producto, item.getCantidadSolicitada(), item.getCostoUnitario());
         }
 
+        recalcularMontoTotal(orden);
         return toResponseDto(ordenRepo.save(orden));
     }
 
-     public ordenCompraResponseDto agregarItem(Integer ordenId,
-                                              ordenCompraItemRequestDto dto) {
+    // -------------------------------------------------------------------------
+    // AGREGAR ÍTEM — solo en BORRADOR
+    // -------------------------------------------------------------------------
+
+    public ordenCompraResponseDto agregarItem(Integer ordenId, ordenCompraItemRequestDto dto) {
         OrdenCompra orden = buscarOrdenConDetalles(ordenId);
+        validarEstadoBorrador(orden, "agregar ítems");
 
         boolean yaExiste = orden.getDetalles().stream()
-            .anyMatch(d -> d.getProducto().getId() == dto.getProductoId());
+            .anyMatch(d -> d.getProducto().getId().equals(dto.getProductoId()));
         if (yaExiste) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                "El producto id=" + dto.getProductoId() + " ya existe en la orden");
+                "El producto id=" + dto.getProductoId() + " ya existe en la orden id=" + ordenId);
         }
 
         Producto producto = buscarProductoActivo(dto.getProductoId());
+        agregarDetalleAOrden(orden, producto, dto.getCantidadSolicitada(), dto.getCostoUnitario());
+        recalcularMontoTotal(orden);
+        return toResponseDto(ordenRepo.save(orden));
+    }
 
-        OrdenCompraDetalle detalle = OrdenCompraDetalle.builder()
-            .producto(producto)
-            .cantidadSolicitada(dto.getCantidadSolicitada())
-            .costoUnitario(dto.getCostoUnitario())
-            .build();
+    // -------------------------------------------------------------------------
+    // ELIMINAR ÍTEM — solo en BORRADOR
+    // -------------------------------------------------------------------------
 
-        orden.agregarDetalle(detalle);
+    public ordenCompraResponseDto eliminarItem(Integer ordenId, Integer detalleId) {
+        OrdenCompra orden = buscarOrdenConDetalles(ordenId);
+        validarEstadoBorrador(orden, "eliminar ítems");
+
+        boolean removido = orden.getDetalles()
+            .removeIf(d -> d.getId() != null && d.getId().equals(detalleId));
+
+        if (!removido) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Ítem id=" + detalleId + " no encontrado en la orden id=" + ordenId);
+        }
+
+        recalcularMontoTotal(orden);
+        return toResponseDto(ordenRepo.save(orden));
+    }
+
+    // -------------------------------------------------------------------------
+    // ACTUALIZAR COSTO — solo en BORRADOR
+    // -------------------------------------------------------------------------
+
+    public ordenCompraResponseDto actualizarCostoItem(Integer ordenId,
+                                                      Integer detalleId,
+                                                      actualizarItemCostoDto dto) {
+        OrdenCompra orden = buscarOrdenConDetalles(ordenId);
+        validarEstadoBorrador(orden, "modificar costos");
+
+        OrdenCompraDetalle detalle = orden.getDetalles().stream()
+            .filter(d -> d.getId().equals(detalleId))
+            .findFirst()
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Ítem id=" + detalleId + " no encontrado en la orden id=" + ordenId));
+
+        detalle.setCostoUnitario(dto.getCostoUnitario());
+        recalcularMontoTotal(orden);
+        return toResponseDto(ordenRepo.save(orden));
+    }
+
+    // -------------------------------------------------------------------------
+    // EMITIR — BORRADOR → EMITIDA
+    // -------------------------------------------------------------------------
+
+    public ordenCompraResponseDto emitir(Integer id) {
+        OrdenCompra orden = buscarOrdenConDetalles(id);
+        validarTransicion(orden, EstadoOrden.emitida);
+
+        if (orden.getDetalles().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "No se puede emitir la orden id=" + id + ": no tiene ítems.");
+        }
+
+        boolean haySinCosto = orden.getDetalles().stream()
+            .anyMatch(d -> d.getCostoUnitario() == null);
+        if (haySinCosto) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "No se puede emitir la orden id=" + id + ": hay ítems sin costo unitario.");
+        }
+
+        orden.setEstado(EstadoOrden.emitida);
+        orden.setFechaEmision(OffsetDateTime.now(ZoneOffset.UTC));
+        return toResponseDto(ordenRepo.save(orden));
+    }
+
+    // -------------------------------------------------------------------------
+    // CANCELAR — BORRADOR o EMITIDA → CANCELADA
+    // -------------------------------------------------------------------------
+
+    public ordenCompraResponseDto cancelar(Integer id) {
+        OrdenCompra orden = buscarOrden(id);
+        validarTransicion(orden, EstadoOrden.cancelada);
+        orden.setEstado(EstadoOrden.cancelada);
         return toResponseDto(ordenRepo.save(orden));
     }
 
@@ -122,98 +190,26 @@ public class ordenCompraService {
     public PaginatedResponseDto<ordenCompraResponseDto> listar(
             String estadoParam, Integer page, Integer limit) {
 
-        Pageable pageable = PageRequest.of(page, limit,
-            Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, limit, Sort.by("createdAt").descending());
 
         Page<OrdenCompra> resultado = (estadoParam != null && !estadoParam.isBlank())
             ? ordenRepo.findByEstado(parsearEstado(estadoParam), pageable)
             : ordenRepo.findAll(pageable);
 
-        List<ordenCompraResponseDto> data = resultado.getContent()
-            .stream()
-            .map(this::toResponseDto)
-            .toList();
-
-        return new PaginatedResponseDto<>(data, page, limit,
-            (int) resultado.getTotalElements());
+        return toPaginatedDto(resultado, page, limit);
     }
 
     @Transactional(readOnly = true)
     public PaginatedResponseDto<ordenCompraResponseDto> listarPorProveedor(
             Integer proveedorId, Integer page, Integer limit) {
 
-        Pageable pageable = PageRequest.of(page, limit,
-            Sort.by("createdAt").descending());
-
+        Pageable pageable = PageRequest.of(page, limit, Sort.by("createdAt").descending());
         Page<OrdenCompra> resultado = ordenRepo.findByProveedorId(proveedorId, pageable);
-
-        List<ordenCompraResponseDto> data = resultado.getContent()
-            .stream()
-            .map(this::toResponseDto)
-            .toList();
-
-        return new PaginatedResponseDto<>(data, page, limit,
-            (int) resultado.getTotalElements());
+        return toPaginatedDto(resultado, page, limit);
     }
 
     // -------------------------------------------------------------------------
-    // MODIFICAR BORRADOR
-    // -------------------------------------------------------------------------
-
-   
-
-    public ordenCompraResponseDto eliminarItem(Integer ordenId, Integer detalleId) {
-        OrdenCompra orden = buscarOrdenConDetalles(ordenId);
-        orden.eliminarDetalle(detalleId);
-        return toResponseDto(ordenRepo.save(orden));
-    }
-
-    public ordenCompraResponseDto actualizarCostoItem(Integer ordenId,
-                                                      Integer detalleId,
-                                                      actualizarItemCostoDto dto) {
-        OrdenCompra orden = buscarOrdenConDetalles(ordenId);
-
-        if (orden.getEstado() != EstadoOrden.borrador) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                "Solo se puede modificar costos en una orden en borrador");
-        }
-
-        OrdenCompraDetalle detalle = orden.getDetalles().stream()
-            .filter(d -> d.getId().equals(detalleId))
-            .findFirst()
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                "Ítem id=" + detalleId + " no encontrado en la orden id=" + ordenId));
-
-        detalle.setCostoUnitario(dto.getCostoUnitario());
-        return toResponseDto(ordenRepo.save(orden));
-    }
-
-    // -------------------------------------------------------------------------
-    // TRANSICIONES DE ESTADO
-    // -------------------------------------------------------------------------
-
-    public ordenCompraResponseDto emitir(Integer id) {
-        OrdenCompra orden = buscarOrdenConDetalles(id);
-        try {
-            orden.emitir();
-        } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
-        }
-        return toResponseDto(ordenRepo.save(orden));
-    }
-
-    public ordenCompraResponseDto cancelar(Integer id) {
-        OrdenCompra orden = buscarOrden(id);
-        try {
-            orden.cancelar();
-        } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
-        }
-        return toResponseDto(ordenRepo.save(orden));
-    }
-
-    // -------------------------------------------------------------------------
-    // Métodos internos
+    // Helpers internos
     // -------------------------------------------------------------------------
 
     OrdenCompra buscarOrden(Integer id) {
@@ -234,15 +230,60 @@ public class ordenCompraService {
                 HttpStatus.NOT_FOUND, "Producto activo no encontrado: " + id));
     }
 
-    private EstadoOrden parsearEstado(String estado) {
-        try {
-            return EstadoOrden.valueOf(estado.toLowerCase());
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Estado inválido: '" + estado + "'. " +
-                "Valores: borrador, emitida, recibida, recibida_parcial, cancelada");
+    // Centraliza la creación del detalle y el vínculo bidireccional.
+    // Sin esto, mappedBy no persiste la FK y Hibernate inserta con orden_compra_id = NULL.
+    private void agregarDetalleAOrden(OrdenCompra orden, Producto producto,
+                                      Integer cantidad, BigDecimal costo) {
+        OrdenCompraDetalle detalle = OrdenCompraDetalle.builder()
+            .ordenCompra(orden)
+            .producto(producto)
+            .cantidadSolicitada(cantidad)
+            .costoUnitario(costo)
+            .build();
+        orden.getDetalles().add(detalle);
+    }
+
+    // Recalcula monto_total sumando solo ítems con costo definido.
+    // Se llama explícitamente después de cada mutación de detalles.
+    private void recalcularMontoTotal(OrdenCompra orden) {
+        BigDecimal total = orden.getDetalles().stream()
+            .filter(d -> d.getCostoUnitario() != null)
+            .map(d -> d.getCostoUnitario()
+                .multiply(BigDecimal.valueOf(d.getCantidadSolicitada())))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        orden.setMontoTotal(total);
+    }
+
+    private void validarTransicion(OrdenCompra orden, EstadoOrden destino) {
+        if (!orden.getEstado().puedeTransicionarA(destino)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                String.format("Transición inválida en orden id=%d: '%s' → '%s'.",
+                    orden.getId(), orden.getEstado(), destino));
         }
     }
+
+    private void validarEstadoBorrador(OrdenCompra orden, String accion) {
+        if (orden.getEstado() != EstadoOrden.borrador) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                String.format("No se puede %s en la orden id=%d (estado: %s). " +
+                    "Solo permitido en borrador.", accion, orden.getId(), orden.getEstado()));
+        }
+    }
+
+    private EstadoOrden parsearEstado(String estado) {
+    try {
+        return EstadoOrden.valueOf(estado.toLowerCase());
+    } catch (IllegalArgumentException e) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+            "Estado inválido: '" + estado + "'. " +
+            "Valores: borrador, emitida, recibida, recibida_parcial, cancelada");
+       
+    }
+}
+
+    // -------------------------------------------------------------------------
+    // Mapeo a DTOs
+    // -------------------------------------------------------------------------
 
     private ordenCompraResponseDto toResponseDto(OrdenCompra o) {
         ordenCompraResponseDto dto = new ordenCompraResponseDto();
@@ -268,8 +309,16 @@ public class ordenCompraService {
         dto.setProductoNombre(d.getProducto().getNombre());
         dto.setCantidadSolicitada(d.getCantidadSolicitada());
         dto.setCostoUnitario(d.getCostoUnitario());
-        dto.setCantidadRecibida(d.getCantidadRecibida());
-        dto.setCompleto(d.estaCompleto());
         return dto;
+    }
+
+    private PaginatedResponseDto<ordenCompraResponseDto> toPaginatedDto(
+            Page<OrdenCompra> page, int pageNum, int limit) {
+        List<ordenCompraResponseDto> data = page.getContent()
+            .stream()
+            .map(this::toResponseDto)
+            .toList();
+        return new PaginatedResponseDto<>(data, pageNum, limit,
+            (int) page.getTotalElements());
     }
 }

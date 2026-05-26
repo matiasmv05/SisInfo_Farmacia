@@ -1,10 +1,24 @@
 package com.farmacia.cristoredentor.Entity;
 
-import jakarta.persistence.*;
-import lombok.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "clasificacion_abc_historial", schema = "farmacia")
@@ -20,7 +34,8 @@ public class ClasificacionAbcHistorial {
     private Integer id;
 
     @Column(name = "fecha_calculo", nullable = false, updatable = false)
-    private OffsetDateTime fechaCalculo;
+    @Builder.Default
+    private OffsetDateTime fechaCalculo = OffsetDateTime.now();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)

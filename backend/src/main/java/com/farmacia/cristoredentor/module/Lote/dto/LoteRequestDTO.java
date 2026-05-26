@@ -37,6 +37,4 @@ public class LoteRequestDTO {
     @Digits(integer = 8, fraction = 2, message = "Formato inválido para costo unitario")
     private BigDecimal costoUnitario;
 
-    // Opcional: si viene de una orden de compra
-    private Integer ordenCompraId;
 }

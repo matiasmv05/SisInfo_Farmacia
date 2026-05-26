@@ -3,6 +3,9 @@ package com.farmacia.cristoredentor.Entity;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import com.farmacia.cristoredentor.Enum.ClasificacionABC;
 
 import jakarta.persistence.Column;
@@ -78,10 +81,12 @@ public class Producto {
     @Column(name = "activo", nullable = false)
     private boolean activo;
 
+      @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
+    
+     @UpdateTimestamp
+    @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
     @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY)

@@ -20,6 +20,5 @@ public class ordenCompraItemDto {
     private String     productoNombre;
     private Integer    cantidadSolicitada;
     private BigDecimal costoUnitario;
-    private Integer      cantidadRecibida;
     private boolean    completo;
 }

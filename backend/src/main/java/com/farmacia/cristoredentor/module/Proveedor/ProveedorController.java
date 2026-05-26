@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -33,6 +34,7 @@ public class ProveedorController {
 
     // POST /api/proveedores
     @PostMapping
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<ProveedorResponseDTO> crear(
             @Valid @RequestBody ProveedorRequestDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.crear(dto));
@@ -40,18 +42,21 @@ public class ProveedorController {
 
     // GET /api/proveedores/{id}
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<ProveedorResponseDTO> obtenerPorId(@PathVariable Integer id) {
         return ResponseEntity.ok(service.obtenerPorId(id));
     }
 
     // GET /api/proveedores/todos
     @GetMapping("/todos")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<List<ProveedorResponseDTO>> listarTodos() {
         return ResponseEntity.ok(service.listarActivos());
     }
 
     // GET /api/proveedores?page=0&limit=20&nombre=farma&activo=true
     @GetMapping
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<PaginatedResponseDto<ProveedorResponseDTO>> listar(
             @RequestParam(defaultValue = "0")  Integer page,
             @RequestParam(defaultValue = "20") Integer limit,
@@ -62,6 +67,7 @@ public class ProveedorController {
 
     // PUT /api/proveedores/{id}
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<ProveedorResponseDTO> actualizar(
             @PathVariable Integer id,
             @Valid @RequestBody ProveedorRequestDTO dto) {
@@ -70,6 +76,7 @@ public class ProveedorController {
 
     // DELETE /api/proveedores/{id}
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<Void> desactivar(@PathVariable Integer id) {
         service.desactivar(id);
         return ResponseEntity.noContent().build();
@@ -77,6 +84,7 @@ public class ProveedorController {
 
     // PATCH /api/proveedores/{id}/activar
     @PatchMapping("/{id}/activar")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<Void> activar(@PathVariable Integer id) {
         service.activar(id);
         return ResponseEntity.noContent().build();

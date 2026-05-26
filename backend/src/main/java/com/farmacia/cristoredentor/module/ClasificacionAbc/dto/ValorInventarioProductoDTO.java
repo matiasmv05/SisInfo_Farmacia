@@ -1,9 +1,13 @@
-// com/farmacia/cristoredentor/module/ClasificacionAbc/ValorInventarioProducto.java
 package com.farmacia.cristoredentor.module.ClasificacionAbc.dto;
 
 import java.math.BigDecimal;
 
-public interface ValorInventarioProductoDTO{
-    Integer    getProductoId();
-    BigDecimal getValorInventario();
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@Getter
+@AllArgsConstructor
+public class ValorInventarioProductoDTO {
+    private final Integer productoId;
+    private final BigDecimal valorInventario;
 }

@@ -2,6 +2,8 @@ package com.farmacia.cristoredentor.module.OrdenCompra;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -32,16 +34,21 @@ public class ordenCompraController {
     }
 
     // POST /api/ordenes-compra?usuarioId=1
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
     @PostMapping
     public ResponseEntity<ordenCompraResponseDto> crear(
             @Valid @RequestBody crearOrdenCompraDto dto,
-            @RequestParam Integer usuarioId) {
+            Authentication authentication) {
+
+        Integer usuarioId = (Integer) authentication.getPrincipal();
+
         return ResponseEntity
             .status(HttpStatus.CREATED)
             .body(service.crearOrden(dto, usuarioId));
     }
 
     // GET /api/ordenes-compra/{id}
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
     @GetMapping("/{id}")
     public ResponseEntity<ordenCompraResponseDto> obtenerPorId(
             @PathVariable Integer id) {
@@ -49,6 +56,7 @@ public class ordenCompraController {
     }
 
     // GET /api/ordenes-compra?estado=borrador&page=0&limit=20
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
     @GetMapping
     public ResponseEntity<PaginatedResponseDto<ordenCompraResponseDto>> listar(
             @RequestParam(required = false)    String  estado,
@@ -58,6 +66,7 @@ public class ordenCompraController {
     }
 
     // GET /api/ordenes-compra/proveedor/{proveedorId}?page=0&limit=20
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
     @GetMapping("/proveedor/{proveedorId}")
     public ResponseEntity<PaginatedResponseDto<ordenCompraResponseDto>> listarPorProveedor(
             @PathVariable Integer proveedorId,
@@ -67,6 +76,7 @@ public class ordenCompraController {
     }
 
     // POST /api/ordenes-compra/{id}/items
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
     @PostMapping("/{id}/items")
     public ResponseEntity<ordenCompraResponseDto> agregarItem(
             @PathVariable Integer id,
@@ -75,6 +85,7 @@ public class ordenCompraController {
     }
 
     // DELETE /api/ordenes-compra/{id}/items/{detalleId}
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/{id}/items/{detalleId}")
     public ResponseEntity<ordenCompraResponseDto> eliminarItem(
             @PathVariable Integer id,
@@ -83,6 +94,7 @@ public class ordenCompraController {
     }
 
     // PATCH /api/ordenes-compra/{id}/items/{detalleId}/costo
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PatchMapping("/{id}/items/{detalleId}/costo")
     public ResponseEntity<ordenCompraResponseDto> actualizarCosto(
             @PathVariable Integer id,
@@ -92,12 +104,14 @@ public class ordenCompraController {
     }
 
     // PATCH /api/ordenes-compra/{id}/emitir
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PatchMapping("/{id}/emitir")
     public ResponseEntity<ordenCompraResponseDto> emitir(@PathVariable Integer id) {
         return ResponseEntity.ok(service.emitir(id));
     }
 
     // PATCH /api/ordenes-compra/{id}/cancelar
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PatchMapping("/{id}/cancelar")
     public ResponseEntity<ordenCompraResponseDto> cancelar(@PathVariable Integer id) {
         return ResponseEntity.ok(service.cancelar(id));

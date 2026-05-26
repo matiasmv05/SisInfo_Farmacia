@@ -30,7 +30,7 @@ public class ProductoRequestDTO {
 
     @NotNull(message = "La categoría es obligatoria")
     @Positive(message = "El id de categoría debe ser positivo")
-    private Integer categoriaid;
+    private Integer categoriaId;
 
     @NotBlank(message = "El laboratorio es obligatorio")
     @Size(max = 100)

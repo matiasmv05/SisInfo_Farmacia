@@ -1,7 +1,8 @@
 package com.farmacia.cristoredentor.module.OrdenCompra;
 
-import com.farmacia.cristoredentor.Entity.OrdenCompra;
-import com.farmacia.cristoredentor.Entity.OrdenCompra.EstadoOrden;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,8 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
+import com.farmacia.cristoredentor.Entity.OrdenCompra;
+import com.farmacia.cristoredentor.Enum.EstadoOrden;
 
 @Repository
 public interface OrdenCompraRepository extends JpaRepository<OrdenCompra, Integer> {
@@ -30,4 +31,6 @@ public interface OrdenCompraRepository extends JpaRepository<OrdenCompra, Intege
         WHERE o.id = :id
         """)
     Optional<OrdenCompra> findByIdConDetalles(@Param("id") Integer id);
+
+    
 }

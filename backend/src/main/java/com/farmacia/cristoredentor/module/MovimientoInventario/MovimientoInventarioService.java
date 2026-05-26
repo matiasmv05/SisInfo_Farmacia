@@ -1,92 +1,245 @@
 package com.farmacia.cristoredentor.module.MovimientoInventario;
 
-import org.springframework.data.domain.*;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.farmacia.cristoredentor.Entity.*;
+import com.farmacia.cristoredentor.Entity.Lote;
+import com.farmacia.cristoredentor.Entity.MovimientoInventario;
+import com.farmacia.cristoredentor.Entity.Producto;
+import com.farmacia.cristoredentor.Entity.Usuario;
+import com.farmacia.cristoredentor.Enum.EstadoLote;
+import com.farmacia.cristoredentor.Enum.TipoMovimiento;
 import com.farmacia.cristoredentor.exceptions.BusinessException;
 import com.farmacia.cristoredentor.exceptions.ResourceNotFoundException;
-import com.farmacia.cristoredentor.module.Lote.LoteRepository;
-import com.farmacia.cristoredentor.module.Producto.ProductoRepository;
-import com.farmacia.cristoredentor.module.Usuario.usuarioRepository;
-import com.farmacia.cristoredentor.module.Proveedor.ProveedorRepository;
+import com.farmacia.cristoredentor.module.Lote.LoteService;
+import com.farmacia.cristoredentor.module.Lote.dto.LoteRequestDTO;
+import com.farmacia.cristoredentor.module.Lote.dto.ResultadoDesconteStock;
+import com.farmacia.cristoredentor.module.MovimientoInventario.dto.MovimientoContext;
+import com.farmacia.cristoredentor.module.MovimientoInventario.dto.MovimientoDetalleDTO;
 import com.farmacia.cristoredentor.module.OrdenCompra.OrdenCompraRepository;
-import com.farmacia.cristoredentor.module.MovimientoInventario.dto.*;
+import com.farmacia.cristoredentor.module.Producto.ProductoService;
+import com.farmacia.cristoredentor.module.Proveedor.ProveedorRepository;
+import com.farmacia.cristoredentor.module.Usuario.usuarioRepository;
 import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
-
-import java.time.OffsetDateTime;
-import java.util.List;
 
 @Service
 @Transactional
 public class MovimientoInventarioService {
 
     private final MovimientoInventarioRepository repo;
-    private final LoteRepository loteRepo;
-    private final ProductoRepository productoRepo;
+    private final LoteService loteService;
+    private final ProductoService productoService;
     private final usuarioRepository usuarioRepo;
     private final ProveedorRepository proveedorRepo;
     private final OrdenCompraRepository ordenCompraRepo;
 
     public MovimientoInventarioService(
             MovimientoInventarioRepository repo,
-            LoteRepository loteRepo,
-            ProductoRepository productoRepo,
+            LoteService loteService,
+            ProductoService productoService,
             usuarioRepository usuarioRepo,
             ProveedorRepository proveedorRepo,
             OrdenCompraRepository ordenCompraRepo) {
         this.repo = repo;
-        this.loteRepo = loteRepo;
-        this.productoRepo = productoRepo;
+        this.loteService = loteService;
+        this.productoService = productoService;
         this.usuarioRepo = usuarioRepo;
         this.proveedorRepo = proveedorRepo;
         this.ordenCompraRepo = ordenCompraRepo;
     }
 
-    // Registrar movimiento
-    public MovimientoDetalleDTO registrar(MovimientoRequestDTO dto) {
-        Lote lote = loteRepo.findById(dto.getLoteId())
-            .orElseThrow(() -> new ResourceNotFoundException(
-                "Lote no encontrado: " + dto.getLoteId()));
+    // =========================================================================
+    // ENTRADA DIRECTA — sin orden de compra
+    // =========================================================================
+    public MovimientoDetalleDTO entradaDirecta(
+            LoteRequestDTO dto, Integer usuarioId) {
 
-        Producto producto = productoRepo.findById(dto.getProductoId())
-            .orElseThrow(() -> new ResourceNotFoundException(
-                "Producto no encontrado: " + dto.getProductoId()));
+        // 1. Validar y obtener producto
+        Producto producto = productoService.buscarEntidadActiva(dto.getProductoId());
 
-        Usuario usuario = usuarioRepo.findById(dto.getUsuarioId())
-            .orElseThrow(() -> new ResourceNotFoundException(
-                "Usuario no encontrado: " + dto.getUsuarioId()));
+        // 2. Crear lote
+        Lote lote = loteService.crearLote(dto, producto);
 
-        validarReglasPorTipo(dto, lote);
+        // 3. Actualizar stock
+        productoService.sincronizarStock(producto.getId());
 
-        MovimientoInventario movimiento = MovimientoInventario.builder()
-            .lote(lote)
-            .producto(producto)
-            .tipoMovimiento(dto.getTipoMovimiento())
-            .cantidad(dto.getCantidad())
-            .costoUnitario(dto.getCostoUnitario())
-            .motivo(dto.getMotivo())
-            .usuario(usuario)
-            .proveedor(dto.getProveedorId() != null
-                ? proveedorRepo.getReferenceById(dto.getProveedorId()) : null)
-            .ordenCompra(dto.getOrdenCompraId() != null
-                ? ordenCompraRepo.getReferenceById(dto.getOrdenCompraId()) : null)
-            .referenciaId(dto.getReferenciaId())
-            .fechaHora(OffsetDateTime.now())
-            .build();
-
-        return toDetalleDTO(repo.save(movimiento));
+        // 4. Registrar trazabilidad
+        return persistirMovimiento(MovimientoContext.builder()
+        .lote(lote)
+        .tipo(TipoMovimiento.entrada_directa)
+        .cantidad(lote.getCantidad())
+        .costoUnitario(lote.getCostoUnitario())
+        .usuarioId(usuarioId)
+        .build()
+    );
     }
 
-    // Consultar por producto
+    // =========================================================================
+// ENTRADA POR RECEPCIÓN DE ORDEN DE COMPRA
+// =========================================================================
+public MovimientoDetalleDTO entradaPorRecepcion(
+        Lote lote, int cantidad, Integer usuarioId,
+        Integer proveedorId, Integer ordenCompraId) {
+
+    productoService.sincronizarStock(lote.getProducto().getId());
+
+    return persistirMovimiento(MovimientoContext.builder()
+        .lote(lote)
+        .tipo(TipoMovimiento.entrada)  // verificá que este valor exista en tu enum
+        .cantidad(cantidad)
+        .costoUnitario(lote.getCostoUnitario())
+        .usuarioId(usuarioId)
+        .proveedorId(proveedorId)
+        .ordenCompraId(ordenCompraId)
+        .motivo("Recepción de OC-" + ordenCompraId)
+        .build()
+    );
+}
+
+    // =========================================================================
+    // SALIDA — descuenta por FEFO automáticamente
+    // =========================================================================
+   public List<MovimientoDetalleDTO> salida(
+        Integer productoId, int cantidad, Integer usuarioId) {
+
+    List<ResultadoDesconteStock> resultados =
+        loteService.descontarStockFEFO(productoId, cantidad);
+
+    List<MovimientoDetalleDTO> movimientos = resultados.stream()
+        .map(r -> persistirMovimiento(MovimientoContext.builder()
+            .lote(r.getLote())
+            .tipo(TipoMovimiento.salida)
+            .cantidad(r.getCantidadDescontada())
+            .costoUnitario(r.getLote().getCostoUnitario())
+            .usuarioId(usuarioId)
+            .build()
+        ))
+        .toList();
+
+    productoService.sincronizarStock(productoId); 
+    return movimientos;
+}
+
+    // =========================================================================
+    // BAJA POR VENCIMIENTO
+    // =========================================================================
+    public MovimientoDetalleDTO bajaVencimiento(
+            Integer loteId, String motivo, Integer usuarioId) {
+
+        // 1. Marcar lote vencido — retorna cuánto había antes
+        ResultadoDesconteStock resultado = loteService.marcarVencido(loteId, motivo);
+
+        // 2. Descontar del stock solo si había unidades
+       productoService.sincronizarStock(
+          resultado.getLote().getProducto().getId()
+        );
+
+        // 3. Registrar trazabilidad
+        return persistirMovimiento(MovimientoContext.builder()
+        .lote(resultado.getLote())
+        .tipo(TipoMovimiento.baja_vencimiento)
+        .cantidad(resultado.getCantidadDescontada())
+        .costoUnitario(resultado.getLote().getCostoUnitario())
+        .motivo(motivo)
+        .usuarioId(usuarioId)
+        .build()
+        );
+    }
+
+    // =========================================================================
+    // AJUSTE DE ENTRADA
+    // =========================================================================
+    public MovimientoDetalleDTO ajusteEntrada(
+            Integer loteId, int cantidad, String motivo, Integer usuarioId) {
+
+        Lote lote = loteService.buscarLote(loteId);
+
+        if (lote.getEstado() == EstadoLote.vencido){
+        throw new BusinessException("No se puede ajustar un lote vencido.");
+        }
+
+        if (lote.getEstado() == EstadoLote.agotado && cantidad > 0) {
+    if (lote.getFechaVencimiento().isBefore(LocalDate.now())) {
+        throw new BusinessException(
+            "No se puede ajustar: el lote id=" + loteId + 
+            " está agotado y su fecha de vencimiento ya expiró."
+        );
+    }
+    lote.setEstado(EstadoLote.activo);
+}
+        lote.setCantidad(lote.getCantidad() + cantidad);
+        loteService.guardar(lote);
+
+productoService.sincronizarStock(lote.getProducto().getId());
+
+        return persistirMovimiento(MovimientoContext.builder()
+        .lote(lote)
+        .tipo(TipoMovimiento.ajuste_entrada)
+        .cantidad(cantidad)
+        .costoUnitario(lote.getCostoUnitario())
+        .motivo(motivo)
+        .usuarioId(usuarioId)
+        .build()
+        );
+    }
+
+    // =========================================================================
+    // AJUSTE DE SALIDA
+    // =========================================================================
+    public MovimientoDetalleDTO ajusteSalida(
+            Integer loteId, int cantidad, String motivo, Integer usuarioId) {
+
+        Lote lote = loteService.buscarLote(loteId);
+
+
+        if (lote.getEstado() == EstadoLote.vencido){
+            throw new BusinessException(String.format(
+                 "Ajuste inválido: el lote id=%d está vencido.",
+                   loteId
+            ));
+        }
+
+        if (lote.getCantidad() < cantidad)
+            throw new BusinessException(String.format(
+                "Ajuste inválido: lote id=%d tiene %d unidades, " +
+                "se intenta ajustar %d.",
+                loteId, lote.getCantidad(), cantidad
+            ));
+
+        lote.setCantidad(lote.getCantidad() - cantidad);
+        if (lote.getCantidad() == 0) lote.setEstado(EstadoLote.agotado);
+        loteService.guardar(lote);
+
+         productoService.sincronizarStock(lote.getProducto().getId());
+
+        return persistirMovimiento(MovimientoContext.builder()
+        .lote(lote)
+        .tipo(TipoMovimiento.ajuste_salida)
+        .cantidad(cantidad)
+        .costoUnitario(lote.getCostoUnitario())
+        .motivo(motivo)
+        .usuarioId(usuarioId)
+        .build()
+        );
+    }
+
+    // =========================================================================
+    // CONSULTAS
+    // =========================================================================
     @Transactional(readOnly = true)
     public PaginatedResponseDto<MovimientoDetalleDTO> listarPorProducto(
-            Integer productoId, Integer page, Integer limit) {
+            Integer productoId, int page, int limit) {
+
 
         Pageable pageable = PageRequest.of(page, limit);
-        Page<MovimientoInventario> resultado = repo
-            .findByProductoIdOrderByFechaHoraDesc(productoId, pageable);
+        Page<MovimientoInventario> resultado = repo.findByProductoIdOrderByFechaHoraDesc(productoId, pageable);
 
         List<MovimientoDetalleDTO> data = resultado.getContent()
             .stream()
@@ -97,52 +250,32 @@ public class MovimientoInventarioService {
             (int) resultado.getTotalElements());
     }
 
-    // -------------------------------------------------------------------------
-    // Validaciones por tipo de movimiento
-    // -------------------------------------------------------------------------
-    private void validarReglasPorTipo(MovimientoRequestDTO dto, Lote lote) {
+    // =========================================================================
+    // PRIVADOS
+    // =========================================================================
+   private MovimientoDetalleDTO persistirMovimiento(MovimientoContext ctx) {
 
-        switch (dto.getTipoMovimiento()) {
+    Usuario usuario = usuarioRepo.findById(ctx.getUsuarioId())
+        .orElseThrow(() -> new ResourceNotFoundException(
+            "Usuario no encontrado: " + ctx.getUsuarioId()));
 
-            case entrada -> {
-                if (dto.getOrdenCompraId() == null)
-                    throw new BusinessException(
-                        "Una entrada requiere orden_compra_id");
-            }
+    MovimientoInventario mov = MovimientoInventario.builder()
+        .lote(ctx.getLote())
+        .producto(ctx.getLote().getProducto())
+        .tipoMovimiento(ctx.getTipo())
+        .cantidad(ctx.getCantidad())
+        .costoUnitario(ctx.getCostoUnitario())
+        .motivo(ctx.getMotivo())
+        .usuario(usuario)
+        .proveedor(ctx.getProveedorId() != null
+            ? proveedorRepo.getReferenceById(ctx.getProveedorId()) : null)
+        .ordenCompra(ctx.getOrdenCompraId() != null
+            ? ordenCompraRepo.getReferenceById(ctx.getOrdenCompraId()) : null)
+        .fechaHora(OffsetDateTime.now())
+        .build();
 
-            case salida -> {
-                if (lote.getCantidad() < dto.getCantidad())
-                    throw new BusinessException(
-                        "Stock insuficiente en lote " + lote.getNumeroLote() +
-                        ". Disponible: " + lote.getCantidad());
-            }
-
-            case devolucion_cliente -> {
-                if (dto.getReferenciaId() == null)
-                    throw new BusinessException(
-                        "Una devolución de cliente requiere referencia_id " +
-                        "del movimiento de salida original");
-                repo.findSalidaById(dto.getReferenciaId())
-                    .orElseThrow(() -> new BusinessException(
-                        "El movimiento de salida referenciado no existe: "
-                        + dto.getReferenciaId()));
-            }
-
-            case ajuste_entrada, ajuste_salida,
-                 devolucion_proveedor, baja_vencimiento -> {
-                if (dto.getMotivo() == null || dto.getMotivo().isBlank())
-                    throw new BusinessException(
-                        "El tipo " + dto.getTipoMovimiento() +
-                        " requiere motivo obligatorio");
-            }
-
-            default -> { }
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Mapper manual
-    // -------------------------------------------------------------------------
+    return toDetalleDTO(repo.save(mov));
+}
     private MovimientoDetalleDTO toDetalleDTO(MovimientoInventario m) {
         return MovimientoDetalleDTO.builder()
             .id(m.getId())
@@ -160,7 +293,6 @@ public class MovimientoInventarioService {
                 ? m.getProveedor().getNombre() : null)
             .ordenCompraId(m.getOrdenCompra() != null
                 ? m.getOrdenCompra().getId() : null)
-            .referenciaId(m.getReferenciaId())
             .fechaHora(m.getFechaHora())
             .build();
     }

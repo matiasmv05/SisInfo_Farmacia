@@ -1,19 +1,11 @@
 package com.farmacia.cristoredentor.module.ClasificacionAbc;
 
-import com.farmacia.cristoredentor.Entity.ClasificacionAbcDetalle;
-import com.farmacia.cristoredentor.Entity.ClasificacionAbcHistorial;
-import com.farmacia.cristoredentor.Entity.Lote;
-import com.farmacia.cristoredentor.Entity.Producto;
-import com.farmacia.cristoredentor.Entity.Usuario;
-import com.farmacia.cristoredentor.exceptions.BusinessException;
-import com.farmacia.cristoredentor.exceptions.ResourceNotFoundException;
-import com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ClasificacionAbcDetalleDTO;
-import com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ClasificacionAbcHistorialDTO;
-import com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ClasificacionAbcRequestDTO;
-import com.farmacia.cristoredentor.module.Producto.ProductoRepository;
-import com.farmacia.cristoredentor.module.Usuario.usuarioRepository;
-import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
-import com.farmacia.cristoredentor.module.Configuracion_sistema.configuracionSistemaRepository;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,18 +17,27 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
+import com.farmacia.cristoredentor.Entity.ClasificacionAbcDetalle;
+import com.farmacia.cristoredentor.Entity.ClasificacionAbcHistorial;
+import com.farmacia.cristoredentor.Entity.Producto;
+import com.farmacia.cristoredentor.Entity.Usuario;
 import com.farmacia.cristoredentor.Enum.ClasificacionABC;
-import com.farmacia.cristoredentor.Enum.EstadoLote;
+import com.farmacia.cristoredentor.Enum.UserRole;
+import com.farmacia.cristoredentor.exceptions.BusinessException;
+import com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ClasificacionAbcDetalleDTO;
+import com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ClasificacionAbcHistorialDTO;
+import com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ClasificacionAbcRequestDTO;
 import com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ValorInventarioProductoDTO;
+import com.farmacia.cristoredentor.module.Configuracion_sistema.configuracionSistemaRepository;
+import com.farmacia.cristoredentor.module.Producto.ProductoRepository;
+import com.farmacia.cristoredentor.module.Usuario.usuarioRepository;
+import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Transactional(readOnly = true)
+@Slf4j
 public class ClasificacionAbcService {
 
     private final ClasificacionAbcHistorialRepository historialRepo;
@@ -62,12 +63,26 @@ public class ClasificacionAbcService {
     // Scheduler nocturno — 2am todos los días
     // -------------------------------------------------------------------------
 
-    @Scheduled(cron = "0 0 2 * * *")
-    @Transactional
-    public void calcularAbcAutomatico() {
-        usuarioRepo.findById(1)
-            .ifPresent(u -> ejecutarCalculo(u, "Cálculo automático nocturno"));
+ @Scheduled(cron = "0 0 2 1 1,4,7,10 *")
+@Transactional
+public void calcularAbcAutomatico() {
+    Usuario usuario = usuarioRepo
+        .findFirstByRolAndActivoTrue(UserRole.ADMINISTRADOR)
+        .orElse(null);
+
+    if (usuario == null) {
+        log.warn("[ABC Scheduler] No se encontró administrador activo.");
+        return;
     }
+
+    try {
+        ejecutarCalculo(usuario, "Cálculo automático trimestral");
+        log.info("[ABC Scheduler] Cálculo ABC completado exitosamente.");
+    } catch (Exception e) {
+        log.error("[ABC Scheduler] Error: {}", e.getMessage(), e);
+    }
+}
+ 
 
     // -------------------------------------------------------------------------
     // Disparo manual
@@ -88,85 +103,105 @@ public class ClasificacionAbcService {
     // Lógica central
     // -------------------------------------------------------------------------
 
-    @Transactional
-    public ClasificacionAbcHistorialDTO ejecutarCalculo(
-            Usuario usuario, String observaciones) {
+ @Transactional
+public ClasificacionAbcHistorialDTO ejecutarCalculo(
+        Usuario usuario, String observaciones) {
 
-        BigDecimal umbralA = configuracionRepo.findById("abc_umbral_a")
-            .map(c -> c.getValor())
-            .orElse(BigDecimal.valueOf(80));
+    BigDecimal umbralA = configuracionRepo.findById("abc_umbral_a")
+        .map(c -> c.getValor()).orElse(BigDecimal.valueOf(80));
+    BigDecimal umbralB = configuracionRepo.findById("abc_umbral_b")
+        .map(c -> c.getValor()).orElse(BigDecimal.valueOf(95));
+    int periodoMeses = configuracionRepo.findById("abc_periodo_meses")
+        .map(c -> c.getValor().intValue()).orElse(3);
 
-        BigDecimal umbralB = configuracionRepo.findById("abc_umbral_b")
-            .map(c -> c.getValor())
-            .orElse(BigDecimal.valueOf(95));
+    OffsetDateTime desde = OffsetDateTime.now().minusMonths(periodoMeses);
 
-        // Historial incompleto — si falla a mitad queda completado = false
-        ClasificacionAbcHistorial historial = ClasificacionAbcHistorial.builder()
-            .usuario(usuario)
-            .totalProductos(0)
-            .completado(false)
-            .observaciones(observaciones)
-            .build();
-        historial = historialRepo.save(historial);
+    List<ValorInventarioProductoDTO> valores =
+        detalleRepo.calcularValorRotacionPorProducto(desde);
 
-       List<ValorInventarioProductoDTO> valores = detalleRepo.calcularValorInventarioPorProducto(EstadoLote.activo);
-
-        if (valores.isEmpty()) {
-            historialRepo.delete(historial);
-            throw new BusinessException(
-                "No hay lotes activos para calcular ABC");
-        }
-
-        BigDecimal total = valores.stream()
-            .map(ValorInventarioProductoDTO::getValorInventario)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        List<ClasificacionAbcDetalle> detalles = new ArrayList<>();
-        BigDecimal acumulado = BigDecimal.ZERO;
-
-        for (ValorInventarioProductoDTO fila : valores) {
-            BigDecimal valorProducto = fila.getValorInventario();
-
-            BigDecimal pctIndividual = valorProducto
-                .multiply(BigDecimal.valueOf(100))
-                .divide(total, 3, RoundingMode.HALF_UP);
-
-            acumulado = acumulado.add(pctIndividual);
-
-            ClasificacionABC clasificacion;
-            if (acumulado.compareTo(umbralA) <= 0) {
-                clasificacion = ClasificacionABC.A;
-            } else if (acumulado.compareTo(umbralB) <= 0) {
-                clasificacion = ClasificacionABC.B;
-            } else {
-                clasificacion = ClasificacionABC.C;
-            }
-
-            Producto producto = productoRepo.getReferenceById(
-                fila.getProductoId());
-
-            detalles.add(ClasificacionAbcDetalle.builder()
-                .historial(historial)
-                .producto(producto)
-                .valorInventario(valorProducto)
-                .porcentajeIndividual(pctIndividual)
-                .porcentajeAcumulado(acumulado.min(BigDecimal.valueOf(100)))
-                .clasificacion(clasificacion)
-                .build());
-
-            productoRepo.actualizarClasificacionAbc(
-                fila.getProductoId(), clasificacion);
-        }
-
-        detalleRepo.saveAll(detalles);
-
-        historial.setTotalProductos(detalles.size());
-        historial.setValorTotalInv(total);
-        historial.setCompletado(true);
-        historialRepo.save(historial);
-
-        return toHistorialDTO(historial, detalles);
+    if (valores.isEmpty()) {
+        throw new BusinessException(String.format(
+            "No hay movimientos de salida en los últimos %d meses para calcular ABC.",
+            periodoMeses));
     }
+
+    BigDecimal total = valores.stream()
+        .map(ValorInventarioProductoDTO::getValorInventario)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+    // ─── Calcular detalles en memoria (sin historial aún) ────────────
+    List<ClasificacionAbcDetalle> detalles = new ArrayList<>();
+    List<Integer> idsConRotacion = new ArrayList<>();
+    BigDecimal acumulado = BigDecimal.ZERO;
+
+    for (ValorInventarioProductoDTO fila : valores) {
+        BigDecimal valorProducto = fila.getValorInventario();
+
+        BigDecimal pctIndividual = valorProducto
+            .multiply(BigDecimal.valueOf(100))
+            .divide(total, 3, RoundingMode.HALF_UP);
+
+        acumulado = acumulado.add(pctIndividual);
+
+        ClasificacionABC clasificacion;
+        if (acumulado.compareTo(umbralA) <= 0) {
+            clasificacion = ClasificacionABC.A;
+        } else if (acumulado.compareTo(umbralB) <= 0) {
+            clasificacion = ClasificacionABC.B;
+        } else {
+            clasificacion = ClasificacionABC.C;
+        }
+
+        Producto producto = productoRepo.getReferenceById(fila.getProductoId());
+        idsConRotacion.add(fila.getProductoId());
+
+        // ← historial = null por ahora, se asigna después
+        detalles.add(ClasificacionAbcDetalle.builder()
+            .producto(producto)
+            .valorInventario(valorProducto)
+            .porcentajeIndividual(pctIndividual)
+            .porcentajeAcumulado(acumulado.min(BigDecimal.valueOf(100)))
+            .clasificacion(clasificacion)
+            .build());
+
+        productoRepo.actualizarClasificacionAbc(fila.getProductoId(), clasificacion);
+    }
+
+    // Productos SIN rotación → C automático
+    productoRepo.findByActivoTrue().stream()
+        .filter(p -> !idsConRotacion.contains(p.getId()))
+        .forEach(p -> {
+            detalles.add(ClasificacionAbcDetalle.builder()
+                .producto(p)
+                .valorInventario(BigDecimal.ZERO)
+                .porcentajeIndividual(BigDecimal.ZERO)
+                .porcentajeAcumulado(BigDecimal.valueOf(100))
+                .clasificacion(ClasificacionABC.C)
+                .build());
+            productoRepo.actualizarClasificacionAbc(p.getId(), ClasificacionABC.C);
+        });
+
+    // ─── Guardar historial con datos completos ────────────────────────
+    ClasificacionAbcHistorial historial = historialRepo.save(
+        ClasificacionAbcHistorial.builder()
+            .usuario(usuario)
+            .fechaCalculo(OffsetDateTime.now())
+            .totalProductos(detalles.size())
+            .valorTotalInv(total)
+            .completado(true)
+            .observaciones(String.format("%s | Período: últimos %d meses (desde %s)",
+                observaciones != null ? observaciones : "Cálculo ABC",
+                periodoMeses,
+                desde.toLocalDate()))
+            .build()
+    );
+
+    // ─── Asignar historial persistido a cada detalle y guardar ────────
+    detalles.forEach(d -> d.setHistorial(historial));
+    detalleRepo.saveAll(detalles);
+
+    return toHistorialDTO(historial, detalles);
+}
 
     // -------------------------------------------------------------------------
     // Consultas
@@ -226,7 +261,7 @@ public class ClasificacionAbcService {
                 .productoId(d.getProducto().getId())
                 .productoNombre(d.getProducto().getNombre())
                 .laboratorio(d.getProducto().getLaboratorio())
-                .valorInventario(d.getValorInventario())
+                .unidadesDespachadas(d.getValorInventario())
                 .porcentajeIndividual(d.getPorcentajeIndividual())
                 .porcentajeAcumulado(d.getPorcentajeAcumulado())
                 .clasificacion(d.getClasificacion().name())
@@ -238,7 +273,7 @@ public class ClasificacionAbcService {
             .fechaCalculo(h.getFechaCalculo())
             .usuarioNombre(h.getUsuario().getNombreCompleto())
             .totalProductos(h.getTotalProductos())
-            .valorTotalInv(h.getValorTotalInv())
+            .totalUnidadesDespachadas (h.getValorTotalInv())
             .observaciones(h.getObservaciones())
             .completado(h.isCompletado())
             .detalles(detalleDTOs)

@@ -43,7 +43,7 @@ public class CategoriaService {
     // Método para listar todas las categorías
     public List<CategoriaResponseDTO> listar() {
 
-        List<Categoria> categorias = repository.findAll();
+        List<Categoria> categorias = repository.findByActivoTrue();
 
         return categorias.stream()
                 .map(categoria -> modelMapper.map(categoria, CategoriaResponseDTO.class))
@@ -99,6 +99,13 @@ public class CategoriaService {
     public void desactivarCategoria(Integer id) {
         Categoria categoria = obtenerPorId(id);
         categoria.setActivo(false);
+        repository.save(categoria);
+    }
+
+    // Método para activar una categoría
+    public void activarCategoria(Integer id) {
+        Categoria categoria = obtenerPorId(id);
+        categoria.setActivo(true);
         repository.save(categoria);
     }
 }

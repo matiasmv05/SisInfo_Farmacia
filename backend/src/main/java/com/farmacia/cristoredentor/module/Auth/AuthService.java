@@ -26,7 +26,7 @@ public class AuthService {
     // 1. Buscar al usuario activo por email (Esto se queda igual)
     Usuario usuario = usuarioRepository.findByEmailAndActivoTrue(request.getEmail())
             .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("Credenciales inválidas"));
-
+            
      if (!passwordEncoder.matches(request.getPassword(), usuario.getPasswordHash())) {
         throw new org.springframework.security.authentication.BadCredentialsException("Credenciales inválidas");
     }

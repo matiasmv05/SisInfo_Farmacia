@@ -1,15 +1,12 @@
 package com.farmacia.cristoredentor.module.Lote;
 
-import com.farmacia.cristoredentor.Entity.Lote;
-import com.farmacia.cristoredentor.Enum.EstadoLote;
-import com.farmacia.cristoredentor.Entity.Producto;
-import com.farmacia.cristoredentor.exceptions.BusinessException;
-import com.farmacia.cristoredentor.exceptions.ResourceNotFoundException;
-import com.farmacia.cristoredentor.module.Lote.dto.LoteDetalleDTO;
-import com.farmacia.cristoredentor.module.Lote.dto.LoteRequestDTO;
-import com.farmacia.cristoredentor.module.OrdenCompra.OrdenCompraRepository;
-import com.farmacia.cristoredentor.module.Producto.ProductoRepository;
-import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -18,39 +15,35 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import com.farmacia.cristoredentor.Entity.Lote;
+import com.farmacia.cristoredentor.Entity.OrdenCompra;
+import com.farmacia.cristoredentor.Entity.Producto;
+import com.farmacia.cristoredentor.Enum.EstadoLote;
+import com.farmacia.cristoredentor.exceptions.BusinessException;
+import com.farmacia.cristoredentor.exceptions.ResourceNotFoundException;
+import com.farmacia.cristoredentor.module.Lote.dto.LoteDetalleDTO;
+import com.farmacia.cristoredentor.module.Lote.dto.LoteRequestDTO;
+import com.farmacia.cristoredentor.module.Lote.dto.ResultadoDesconteStock;
+import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
 
 @Service
 @Transactional
 public class LoteService {
 
-    private final LoteRepository        loteRepo;
-    private final ProductoRepository    productoRepo;
-    private final OrdenCompraRepository ordenCompraRepo;
-    private final ModelMapper           modelMapper;
+    private final LoteRepository loteRepo;
+    private final ModelMapper modelMapper;
 
-    public LoteService(LoteRepository loteRepo,
-                       ProductoRepository productoRepo,
-                       OrdenCompraRepository ordenCompraRepo,
-                       ModelMapper modelMapper) {
-        this.loteRepo        = loteRepo;
-        this.productoRepo    = productoRepo;
-        this.ordenCompraRepo = ordenCompraRepo;
-        this.modelMapper     = modelMapper;
+    public LoteService(LoteRepository loteRepo, ModelMapper modelMapper) {
+        this.loteRepo = loteRepo;
+        this.modelMapper = modelMapper;
     }
 
     // =========================================================================
-    // CREAR — entrada directa (sin orden de compra)
+    // Métodos package-private — solo los llama MovimientoService
     // =========================================================================
 
-    /**
-     * Crea un lote por entrada directa.
-     * El trigger fn_sync_stock_total en la DB actualiza producto.stock_total
-     * automáticamente al insertar el lote.
-     */
-    public LoteDetalleDTO crearEntradaDirecta(LoteRequestDTO dto) {
-        Producto producto = buscarProductoActivo(dto.getProductoId());
-        validarLoteNoDuplicado(dto.getProductoId(), dto.getNumeroLote());
+    public Lote crearLote(LoteRequestDTO dto, Producto producto) {
+        validarLoteNoDuplicado(producto.getId(), dto.getNumeroLote());
 
         Lote lote = Lote.builder()
             .producto(producto)
@@ -59,14 +52,130 @@ public class LoteService {
             .fechaVencimiento(dto.getFechaVencimiento())
             .costoUnitario(dto.getCostoUnitario())
             .estado(EstadoLote.activo)
-            // ordenCompra null: es entrada directa, permitido por el schema
             .build();
 
-        return toDetalleDTO(loteRepo.save(lote));
+        return loteRepo.save(lote);
+        // El producto ya viene validado desde MovimientoService
+        // El stock lo actualiza MovimientoService llamando a ProductoService
     }
 
+
+   /**
+     * Descuenta stock siguiendo FEFO (First Expired, First Out).
+     *
+     * El query usa PESSIMISTIC_WRITE (SELECT FOR UPDATE) para evitar
+     * condiciones de carrera cuando dos operaciones concurrentes intentan
+     * descontar del mismo producto.
+     *
+     * El método valida primero el stock apto (considerando diasMinimosVenta)
+     * para dar un mensaje de error único y claro antes de mutar cualquier lote.
+     */
+
+  public List<ResultadoDesconteStock> descontarStockFEFO(Integer productoId, int cantidadTotal) {
+ 
+        // El lock pesimista está en el repository — bloquea los lotes
+        // hasta que esta transacción haga commit o rollback.
+        List<Lote> lotesFEFO = loteRepo
+            .findActivosByProductoOrdenadosFEFO(productoId, EstadoLote.activo);
+ 
+        // Calcular stock APTO considerando diasMinimosVenta desde el inicio.
+        // Así el mensaje de error es siempre coherente con lo que realmente
+        // puede despacharse — no hay dos validaciones contradictorias.
+        int disponibleApto = calcularDisponibleApto(lotesFEFO);
+ 
+        if (disponibleApto < cantidadTotal) {
+            int disponibleTotal = lotesFEFO.stream().mapToInt(Lote::getCantidad).sum();
+ 
+            if (disponibleTotal < cantidadTotal) {
+                throw new BusinessException(String.format(
+                    "Stock insuficiente para producto id=%d. " +
+                    "Disponible: %d, solicitado: %d.",
+                    productoId, disponibleTotal, cantidadTotal
+                ));
+            } else {
+                // Hay stock total pero no apto — algunos lotes están en período de restricción
+                throw new BusinessException(String.format(
+                    "Stock insuficiente para producto id=%d. " +
+                    "Hay %d unidades pero solo %d aptas para venta " +
+                    "(el resto está dentro del período mínimo antes del vencimiento). " +
+                    "Solicitado: %d.",
+                    productoId, disponibleTotal, disponibleApto, cantidadTotal
+                ));
+            }
+        }
+ 
+        List<ResultadoDesconteStock> resultados = new ArrayList<>();
+        List<Lote> modificados = new ArrayList<>();
+        int restante = cantidadTotal;
+ 
+        for (Lote lote : lotesFEFO) {
+            if (restante == 0) break;
+            if (!esLoteApto(lote)) continue;
+ 
+            int aDescontar = Math.min(lote.getCantidad(), restante);
+ 
+            // ORDEN IMPORTANTE: guardar el resultado ANTES de mutar el lote.
+            // ResultadoDesconteStock puede guardar referencia a la entidad lote,
+            // así que si mutamos primero, el snapshot de cantidad quedaría incorrecto.
+            resultados.add(new ResultadoDesconteStock(lote, aDescontar));
+ 
+            lote.setCantidad(lote.getCantidad() - aDescontar);
+            if (lote.getCantidad() == 0) lote.setEstado(EstadoLote.agotado);
+            modificados.add(lote);
+ 
+            restante -= aDescontar;
+        }
+        
+ 
+        loteRepo.saveAll(modificados);
+ 
+        return resultados;
+    }
+
+    public Lote crearOActualizarLote(String numeroLote, int cantidad,
+        LocalDate fechaVencimiento, BigDecimal costo,
+        Producto producto, OrdenCompra orden) {
+
+    return loteRepo.findByProductoIdAndNumeroLote(producto.getId(), numeroLote)
+        .map(lote -> {
+            lote.setCantidad(lote.getCantidad() + cantidad);
+            lote.setEstado(EstadoLote.activo);
+            return loteRepo.save(lote);
+        })
+        .orElseGet(() -> {
+            Lote nuevo = Lote.builder()
+                .producto(producto)
+                .numeroLote(numeroLote)
+                .cantidad(cantidad)
+                .fechaVencimiento(fechaVencimiento)
+                .costoUnitario(costo)
+                .estado(EstadoLote.activo)
+                .ordenCompra(orden)
+                .build();
+            return loteRepo.save(nuevo);
+        });
+}
+
+
+    public ResultadoDesconteStock marcarVencido(Integer loteId, String motivo) {
+    Lote lote = buscarLote(loteId);
+
+    if (lote.getEstado() == EstadoLote.vencido) {
+        throw new BusinessException("El lote id=" + loteId + " ya está vencido.");
+    }
+
+    int cantidadAntes = lote.getCantidad();
+
+    lote.setEstado(EstadoLote.vencido);
+    lote.setFechaBaja(OffsetDateTime.now());
+    lote.setMotivoBaja(motivo);
+    lote.setCantidad(0);
+    loteRepo.save(lote);
+
+    return new ResultadoDesconteStock(lote, cantidadAntes);
+}
     // =========================================================================
-    // LEER
+    // Métodos públicos — lectura, los controllers pueden llamarlos
     // =========================================================================
 
     @Transactional(readOnly = true)
@@ -76,139 +185,76 @@ public class LoteService {
 
     @Transactional(readOnly = true)
     public PaginatedResponseDto<LoteDetalleDTO> listarPorProducto(
-            Integer productoId, Integer page, Integer limit) {
-
-        // Validar que el producto exista antes de paginar
-        buscarProductoActivo(productoId);
+            Integer productoId, int page, int limit) {
 
         Pageable pageable = PageRequest.of(page, limit,
             Sort.by("fechaVencimiento").ascending());
         Page<Lote> resultado = loteRepo.findByProductoId(productoId, pageable);
 
-        List<LoteDetalleDTO> data = resultado.getContent()
-            .stream()
-            .map(this::toDetalleDTO)
-            .toList();
-
-        return new PaginatedResponseDto<>(data, page, limit,
-            (int) resultado.getTotalElements());
+        return toPaginatedResponse(resultado, page, limit);
     }
 
     @Transactional(readOnly = true)
     public PaginatedResponseDto<LoteDetalleDTO> listarPorEstado(
-            String estadoParam, Integer page, Integer limit) {
+            String estadoParam, int page, int limit) {
 
         EstadoLote estado = parsearEstado(estadoParam);
         Pageable pageable = PageRequest.of(page, limit,
             Sort.by("fechaVencimiento").ascending());
         Page<Lote> resultado = loteRepo.findByEstado(estado, pageable);
 
-        List<LoteDetalleDTO> data = resultado.getContent()
-            .stream()
-            .map(this::toDetalleDTO)
-            .toList();
-
-        return new PaginatedResponseDto<>(data, page, limit,
-            (int) resultado.getTotalElements());
+        return toPaginatedResponse(resultado, page, limit);
     }
 
-    // =========================================================================
-    // MARCAR VENCIDO
-    // =========================================================================
 
-    /**
-     * Marca un lote como vencido con su motivo.
-     * Delega la lógica de estado en el método de dominio de la entidad.
-     * El trigger fn_sync_stock_total descuenta el stock del producto automáticamente.
-     */
-    public LoteDetalleDTO marcarVencido(Integer id, String motivo) {
-        Lote lote = buscarLote(id);
-        lote.setMotivoBaja(motivo); // lanza IllegalStateException si ya es VENCIDO
-        return toDetalleDTO(loteRepo.save(lote));
-    }
-
-    // =========================================================================
-    // DESCUENTO FEFO — usado internamente por MovimientoService
-    // =========================================================================
-
-    /**
-     * Descuenta 'cantidad' unidades del producto usando FEFO.
-     * Opera sobre múltiples lotes si es necesario.
-     * Retorna los lotes modificados para que MovimientoService registre
-     * los movimientos de inventario correspondientes.
-     *
-     * Este método es package-private: solo lo llama MovimientoService
-     * dentro del mismo contexto transaccional.
-     *
-     * @throws BusinessException si el stock total disponible es insuficiente
-     */
-    List<Lote> descontarStockFEFO(Integer productoId, int cantidadTotal) {
-        List<Lote> lotesFEFO = loteRepo.findActivosByProductoOrdenadosFEFO(
-            productoId, EstadoLote.activo);
-
-        int disponible = lotesFEFO.stream()
-            .mapToInt(Lote::getCantidad)
-            .sum();
-
-        if (disponible < cantidadTotal) {
-            throw new BusinessException(
-                String.format(
-                    "Stock insuficiente para el producto id=%d. " +
-                    "Disponible: %d, solicitado: %d.",
-                    productoId, disponible, cantidadTotal
-                )
-            );
-        }
-
-        List<Lote> lotesModificados = new java.util.ArrayList<>();
-        int restante = cantidadTotal;
-
-        for (Lote lote : lotesFEFO) {
-            if (restante == 0) break;
-
-            int aDescontar = Math.min(lote.getCantidad(), restante);
-            lote.setCantidad(lote.getCantidad() - aDescontar); // método de dominio de la entidad
-            lotesModificados.add(lote);
-            restante -= aDescontar;
-        }
-
-        // Persistir todos los lotes modificados en una sola operación
-        loteRepo.saveAll(lotesModificados);
-        return lotesModificados;
-    }
-
-    // =========================================================================
-    // Métodos internos
-    // =========================================================================
-
-    Lote buscarLote(Integer id) {
+    public Lote buscarLote(Integer id) {
         return loteRepo.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Lote no encontrado: " + id));
     }
 
-    private Producto buscarProductoActivo(Integer id) {
-        // ProductoRepository trabaja con Long, la entidad usa long en el schema
-        // Si tu ProductoRepository usa Long, convierte aquí
-        return productoRepo.findByIdAndActivoTrue(id)
-            .orElseThrow(() -> new ResourceNotFoundException(
-                "Producto activo no encontrado: " + id));
+    public void guardar(Lote lote){
+        loteRepo.save(lote);
     }
+
+    public LoteDetalleDTO marcarVencidoComoDTO(Integer loteId, String motivo) {
+    ResultadoDesconteStock resultado = marcarVencido(loteId, motivo);
+    return toDetalleDTO(resultado.getLote());
+    }
+    // =========================================================================
+    // Internos privados
+    // =========================================================================
+
+    private int calcularDisponibleApto(List<Lote> lotes) {
+        return lotes.stream()
+            .filter(lote -> esLoteApto(lote))
+            .mapToInt(Lote::getCantidad)
+            .sum();
+    }
+
+
+    private boolean esLoteApto(Lote lote) {
+    Integer diasMinimos = lote.getProducto().getDiasMinimosVenta();
+    if (diasMinimos == null) return true;
+
+    long diasRestantes = ChronoUnit.DAYS.between(
+        LocalDate.now(), lote.getFechaVencimiento());
+
+    return diasRestantes >= diasMinimos;
+}
 
     private void validarLoteNoDuplicado(Integer productoId, String numeroLote) {
         if (loteRepo.existsByProductoIdAndNumeroLote(productoId, numeroLote.trim())) {
-            throw new BusinessException(
-                String.format(
-                    "Ya existe un lote '%s' para el producto id=%d.",
-                    numeroLote, productoId
-                )
-            );
+            throw new BusinessException(String.format(
+                "Ya existe un lote '%s' para el producto id=%d.",
+                numeroLote, productoId
+            ));
         }
     }
 
     private EstadoLote parsearEstado(String estado) {
         try {
-            return EstadoLote.valueOf(estado.toUpperCase());
+            return EstadoLote.valueOf(estado.toLowerCase());
         } catch (IllegalArgumentException e) {
             throw new BusinessException(
                 "Estado inválido: '" + estado + "'. " +
@@ -222,8 +268,20 @@ public class LoteService {
         dto.setProductoId(lote.getProducto().getId());
         dto.setProductoNombre(lote.getProducto().getNombre());
         dto.setOrdenCompraId(
-            lote.getOrdenCompra() != null ? lote.getOrdenCompra().getId() : null
-        );
+            lote.getOrdenCompra() != null ? lote.getOrdenCompra().getId() : null);
         return dto;
     }
+
+    private PaginatedResponseDto<LoteDetalleDTO> toPaginatedResponse(
+            Page<Lote> page, int pageNum, int limit) {
+
+        List<LoteDetalleDTO> data = page.getContent().stream()
+            .map(this::toDetalleDTO)
+            .toList();
+
+        return new PaginatedResponseDto<>(data, pageNum, limit,
+            (int) page.getTotalElements());
+    }
+
+    
 }

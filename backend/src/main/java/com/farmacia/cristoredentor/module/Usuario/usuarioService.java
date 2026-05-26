@@ -1,11 +1,10 @@
 package com.farmacia.cristoredentor.module.Usuario;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
-  import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Page;
   import org.springframework.data.domain.PageRequest;
   import org.springframework.data.domain.Pageable;
   import org.springframework.http.HttpStatus;
@@ -92,7 +91,7 @@ public class usuarioService {
     // Leer todos activos con paginación
     
     @Transactional(readOnly = true)
-    public PaginatedResponseDto<usuarioRequestDto> listarActivosPaginado(Integer page, Integer limit){
+    public PaginatedResponseDto<usuarioRequestDto> listarActivosPaginado(int page, int limit){
     Pageable pageable = PageRequest.of(page, limit);
     Page<Usuario> resultado = repo.findByActivoTrue(pageable);
 
@@ -129,12 +128,6 @@ public class usuarioService {
              u.setPasswordHash(passwordEncoder.encode(dto.getPasswordHash()));
             
         if (dto.getTelefono() != null) {
-            if (repo.existsByTelefonoAndIdNot(dto.getTelefono(), id)) {
-                throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Teléfono ya registrado"
-                );
-            }
 
             u.setTelefono(dto.getTelefono());
         }

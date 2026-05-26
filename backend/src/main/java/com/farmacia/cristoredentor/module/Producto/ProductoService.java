@@ -15,6 +15,7 @@ import com.farmacia.cristoredentor.Entity.Producto;
 import com.farmacia.cristoredentor.exceptions.BusinessException;
 import com.farmacia.cristoredentor.exceptions.ResourceNotFoundException;
 import com.farmacia.cristoredentor.module.Categoria.CategoriaRepository;
+import com.farmacia.cristoredentor.module.Lote.LoteRepository;
 import com.farmacia.cristoredentor.module.Producto.dto.ProductoDetalleDTO;
 import com.farmacia.cristoredentor.module.Producto.dto.ProductoRequestDTO;
 import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
@@ -26,13 +27,17 @@ public class ProductoService {
     private final ProductoRepository productoRepo;
     private final CategoriaRepository categoriaRepo;
     private final ModelMapper modelMapper;
+    private final LoteRepository loteRepo; 
 
     public ProductoService(ProductoRepository productoRepo,
                            CategoriaRepository categoriaRepo,
-                           ModelMapper modelMapper) {
+                           ModelMapper modelMapper ,  
+                           LoteRepository loteRepo                     
+                        ) {
         this.productoRepo = productoRepo;
         this.categoriaRepo = categoriaRepo;
         this.modelMapper = modelMapper;
+        this.loteRepo = loteRepo;
     }
 
     // Crear
@@ -40,9 +45,9 @@ public class ProductoService {
         validarPrecios(dto);
         validarStocks(dto);
 
-        Categoria categoria = categoriaRepo.findById(dto.getCategoriaid())
+        Categoria categoria = categoriaRepo.findById(dto.getCategoriaId())
             .orElseThrow(() -> new ResourceNotFoundException(
-                "Categoría no encontrada: " + dto.getCategoriaid()));
+                "Categoría no encontrada: " + dto.getCategoriaId()));
 
         Producto producto = Producto.builder()
                             .nombre(dto.getNombre())
@@ -71,11 +76,27 @@ public class ProductoService {
 
         List<ProductoDetalleDTO> data = resultado.getContent()
             .stream()
-            .map(p -> modelMapper.map(p, ProductoDetalleDTO.class))
+            .map(p -> toDetalleDTO(p))
             .toList();
 
         return new PaginatedResponseDto<>(data, page, limit, (int) resultado.getTotalElements());
     }
+
+
+    @Transactional(readOnly = true)
+public PaginatedResponseDto<ProductoDetalleDTO> listarFiltrado(
+        Integer page, Integer limit, String nombre, Integer categoriaId) {
+
+    Pageable pageable = PageRequest.of(page, limit, Sort.by("nombre").ascending());
+    Page<Producto> resultado = productoRepo.findByFiltros(nombre, categoriaId, pageable);
+
+    List<ProductoDetalleDTO> data = resultado.getContent()
+        .stream()
+        .map(this::toDetalleDTO)
+        .toList();
+
+    return new PaginatedResponseDto<>(data, page, limit, (int) resultado.getTotalElements());
+}
 
     @Transactional(readOnly = true)
     public PaginatedResponseDto<ProductoDetalleDTO> listarStockCritico(Integer page, Integer limit) {
@@ -84,7 +105,7 @@ public class ProductoService {
 
         List<ProductoDetalleDTO> data = resultado.getContent()
             .stream()
-            .map(p -> modelMapper.map(p, ProductoDetalleDTO.class))
+            .map(p -> toDetalleDTO(p))
             .toList();
 
         return new PaginatedResponseDto<>(data, page, limit, (int) resultado.getTotalElements());
@@ -104,9 +125,9 @@ public class ProductoService {
 
         Producto producto = buscarEntidadActiva(id);
 
-        Categoria categoria = categoriaRepo.findById(dto.getCategoriaid())
+        Categoria categoria = categoriaRepo.findById(dto.getCategoriaId())
             .orElseThrow(() -> new ResourceNotFoundException(
-                "Categoría no encontrada: " + dto.getCategoriaid()));
+                "Categoría no encontrada: " + dto.getCategoriaId()));
 
         producto.setNombre(dto.getNombre());
         producto.setCategoriaid(categoria);
@@ -124,26 +145,66 @@ public class ProductoService {
 
     // Desactivar
     public void desactivarProducto(Integer id) {
-        Producto producto = buscarEntidadActiva(id);
-        producto.setActivo(false);
+    Producto producto = buscarEntidadActiva(id);
+
+    if (producto.getStockTotal() > 0) {
+        throw new BusinessException(String.format(
+            "No se puede desactivar el producto '%s' (id=%d) " +
+            "porque tiene %d unidades en stock. " +
+            "Registre las salidas o bajas correspondientes antes de desactivarlo.",
+            producto.getNombre(), id, producto.getStockTotal()
+        ));
+    }
+
+    producto.setActivo(false);
+    productoRepo.save(producto);
+}
+
+     // Activar
+    public void activarProducto(Integer id) {
+        Producto producto = buscarEntidadDesactiva(id);
+        producto.setActivo(true);
         productoRepo.save(producto);
     }
+
+     // ─── Gestión de stock ────────────────────────────────────────────
+
+    public void sincronizarStock(Integer productoId) {
+    Producto producto = productoRepo.findByIdWithLock(productoId)
+        .orElseThrow(() -> new ResourceNotFoundException(
+            "Producto no encontrado: " + productoId));
+
+    int stockReal = loteRepo.calcularStockReal(productoId);
+    producto.setStockTotal(stockReal);
+    productoRepo.save(producto);
+   }
 
     // -------------------------------------------------------------------------
     // Métodos internos
     // -------------------------------------------------------------------------
 
-    Producto buscarEntidadActiva(Integer id) {
+    public Producto buscarEntidadActiva(Integer id) {
         return productoRepo.findByIdAndActivoTrue(id)
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Producto no encontrado: " + id));
     }
 
-    private ProductoDetalleDTO toDetalleDTO(Producto p) {
-        ProductoDetalleDTO dto = modelMapper.map(p, ProductoDetalleDTO.class);
-        dto.setCategoria(p.getCategoriaid().getNombre()); 
-        return dto;
+    public Producto buscarEntidadDesactiva(Integer id) {
+        return productoRepo.findByIdAndActivoFalse(id)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Producto no encontrado: " + id));
     }
+
+   private ProductoDetalleDTO toDetalleDTO(Producto p) {
+    ProductoDetalleDTO dto = modelMapper.map(p, ProductoDetalleDTO.class);
+    dto.setCategoria(p.getCategoriaid().getNombre());
+    dto.setClasificacionAbc(
+        p.getClasificacionAbc() != null 
+            ? p.getClasificacionAbc().name() 
+            : null
+    );
+    return dto;
+}
 
     private void validarPrecios(ProductoRequestDTO dto) {
         if (dto.getPrecioVenta().compareTo(dto.getPrecioCosto()) < 0)
