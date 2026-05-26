@@ -58,6 +58,16 @@
   --color-inverse-surface: #2e3132;
   --color-tertiary-fixed: #ebddff;
 
+  --color-status-a-bg: #e6f0fa;
+  --color-status-a-text: #003f87;
+  --color-status-b-bg: #f3f4f5;
+  --color-status-b-text: #424752;
+  --color-status-c-bg: #ffffff;
+  --color-status-c-text: #727784;
+  --color-status-critical: #ba1a1a;
+  --color-status-warning: #d97706;
+  --color-status-good: #006e25;
+
   --radius-DEFAULT: 0.125rem;
   --radius-lg: 0.25rem;
   --radius-xl: 0.5rem;
