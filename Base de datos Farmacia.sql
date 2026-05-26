@@ -11,14 +11,7 @@
 -- 0. SCHEMA
 -- =============================================================================
 CREATE SCHEMA IF NOT EXISTS farmacia;
-SET search_path = farmacia, public;
-
-
--- =============================================================================
--- 1. EXTENSIONES
--- =============================================================================
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+SET search_path = farmacia;
 
 
 -- =============================================================================
@@ -42,7 +35,8 @@ INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
     ('alerta_dias_amarillo',   15,  'Días para vencimiento que dispara alerta amarilla'),
     ('alerta_dias_verde',      30,  'Días para vencimiento que dispara alerta verde (aviso temprano)'),
     ('login_intentos_max',     5,  'Intentos fallidos de login antes de bloquear la cuenta'),
-    ('login_bloqueo_minutos',  15,  'Minutos que permanece bloqueada una cuenta tras superar intentos_max');
+    ('login_bloqueo_minutos',  15,  'Minutos que permanece bloqueada una cuenta tras superar intentos_max'),
+	('abc_periodo_meses', 3, 'Meses hacia atrás para calcular ABC por rotación de salidas');
 
 
 -- =============================================================================
@@ -53,7 +47,7 @@ INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES
 -- 4.01 USUARIO
 -- -----------------------------------------------------------------------------
 CREATE TABLE usuario (
-    id               SERIAL          PRIMARY KEY,
+    id               BIGSERIAL          PRIMARY KEY,
     nombre_completo  VARCHAR(150)    NOT NULL,
     password_hash    VARCHAR(255)    NOT NULL,
     rol              VARCHAR(20)     NOT NULL,
@@ -62,6 +56,8 @@ CREATE TABLE usuario (
     updated_at       TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     telefono         VARCHAR(30),
     email            varchar(150)    NOT NULL,
+
+      CONSTRAINT uq_usuario_email UNIQUE (email),
 
     CONSTRAINT ck_usuario_rol
         CHECK (rol IN ('ADMINISTRADOR', 'OPERADOR')),
@@ -78,7 +74,7 @@ COMMENT ON COLUMN usuario.password_hash IS 'Hash bcrypt generado por la app. Nun
 -- 4.02 CATEGORIA
 -- -----------------------------------------------------------------------------
 CREATE TABLE categoria (
-    id           SERIAL          PRIMARY KEY,
+    id           BIGSERIAL          PRIMARY KEY,
     nombre       VARCHAR(100)    NOT NULL,
     descripcion  VARCHAR(255),
     activo       BOOLEAN         NOT NULL DEFAULT TRUE,
@@ -94,7 +90,7 @@ COMMENT ON TABLE categoria IS 'Agrupación terapéutica o funcional (Antibiótic
 -- 4.03 PROVEEDOR
 -- -----------------------------------------------------------------------------
 CREATE TABLE proveedor (
-    id               SERIAL          PRIMARY KEY,
+    id               BIGSERIAL          PRIMARY KEY,
     nombre           VARCHAR(150)    NOT NULL,
     contacto_nombre  VARCHAR(100),
     telefono         VARCHAR(30),
@@ -105,6 +101,7 @@ CREATE TABLE proveedor (
     updated_at       TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
 
     CONSTRAINT uq_proveedor_nombre UNIQUE (nombre),
+    
 
     CONSTRAINT ck_proveedor_correo
         CHECK (
@@ -120,7 +117,7 @@ COMMENT ON TABLE proveedor IS 'Laboratorios y distribuidores que suministran pro
 -- 4.04 PRODUCTO
 -- -----------------------------------------------------------------------------
 CREATE TABLE producto (
-    id                SERIAL          PRIMARY KEY,
+    id                BIGSERIAL          PRIMARY KEY,
     nombre            VARCHAR(150)    NOT NULL,
     categoria_id      INTEGER         NOT NULL,
     laboratorio       VARCHAR(100)    NOT NULL,
@@ -132,6 +129,7 @@ CREATE TABLE producto (
     stock_maximo      INTEGER,
     clasificacion_abc CHAR(1),
     stock_total       INTEGER         NOT NULL DEFAULT 0,
+    dias_minimos_venta INTEGER DEFAULT NULL,
     activo            BOOLEAN         NOT NULL DEFAULT TRUE,
     created_at        TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     updated_at        TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
@@ -139,6 +137,9 @@ CREATE TABLE producto (
     CONSTRAINT fk_producto_categoria
         FOREIGN KEY (categoria_id) REFERENCES categoria (id)
         ON UPDATE CASCADE ON DELETE RESTRICT,
+
+    CONSTRAINT ck_producto_dias_minimos_venta 
+        CHECK (dias_minimos_venta IS NULL OR dias_minimos_venta > 0),
 
     CONSTRAINT ck_producto_precio_costo    CHECK (precio_costo > 0),
     CONSTRAINT ck_producto_precio_venta    CHECK (precio_venta > 0),
@@ -150,11 +151,12 @@ CREATE TABLE producto (
         CHECK (clasificacion_abc IS NULL OR clasificacion_abc IN ('A', 'B', 'C'))
 );
 
-COMMENT ON COLUMN producto.stock_total IS
-    'Mantenido por el backend dentro de una transacción con SELECT ... FOR UPDATE.';
 COMMENT ON COLUMN producto.precio_costo  IS 'Precio de referencia del catálogo. El costo real por compra está en lote.costo_unitario.';
 COMMENT ON COLUMN producto.stock_maximo  IS 'Límite superior de reabastecimiento. Opcional.';
 COMMENT ON COLUMN producto.stock_minimo  IS 'Umbral de alerta. stock_total <= stock_minimo dispara alerta crítica.';
+COMMENT ON COLUMN producto.dias_minimos_venta IS
+    'Días mínimos antes del vencimiento para permitir la venta. '
+    'NULL = sin restricción (insumos, cuidado personal, etc.).';
 
 
 -- -----------------------------------------------------------------------------
@@ -189,7 +191,7 @@ CREATE UNIQUE INDEX uq_pp_producto_principal
 -- Estados: borrador → emitida → recibida | recibida_parcial | cancelada
 -- -----------------------------------------------------------------------------
 CREATE TABLE orden_compra (
-    id              SERIAL          PRIMARY KEY,
+    id              BIGSERIAL          PRIMARY KEY,
     proveedor_id    INTEGER         NOT NULL,
     usuario_id      INTEGER         NOT NULL,
     estado          VARCHAR(20)     NOT NULL DEFAULT 'borrador',
@@ -238,12 +240,11 @@ COMMENT ON COLUMN orden_compra.estado IS
 -- 4.07 ORDEN_COMPRA_DETALLE
 -- -----------------------------------------------------------------------------
 CREATE TABLE orden_compra_detalle (
-    id                  SERIAL          PRIMARY KEY,
+    id                  BIGSERIAL          PRIMARY KEY,
     orden_compra_id     INTEGER         NOT NULL,
     producto_id         INTEGER         NOT NULL,
     cantidad_solicitada INTEGER         NOT NULL,
     costo_unitario      NUMERIC(10,2),
-    cantidad_recibida   INTEGER         NOT NULL DEFAULT 0,
 
     CONSTRAINT fk_ocd_orden_compra
         FOREIGN KEY (orden_compra_id) REFERENCES orden_compra (id)
@@ -257,12 +258,10 @@ CREATE TABLE orden_compra_detalle (
         UNIQUE (orden_compra_id, producto_id),
 
     CONSTRAINT ck_ocd_cantidad_solicitada  CHECK (cantidad_solicitada > 0),
-    CONSTRAINT ck_ocd_costo                CHECK (costo_unitario IS NULL OR costo_unitario > 0),
-    CONSTRAINT ck_ocd_cantidad_recibida    CHECK (cantidad_recibida >= 0)
+    CONSTRAINT ck_ocd_costo                CHECK (costo_unitario IS NULL OR costo_unitario > 0)
 );
 
-COMMENT ON COLUMN orden_compra_detalle.cantidad_recibida IS
-    'Actualizado al recepcionar. Permite rastrear diferencias con cantidad_solicitada.';
+
 COMMENT ON COLUMN orden_compra_detalle.costo_unitario IS
     'Puede ser NULL en borrador. Obligatorio antes de emitir la orden.';
 
@@ -271,7 +270,7 @@ COMMENT ON COLUMN orden_compra_detalle.costo_unitario IS
 -- 4.08 LOTE
 -- -----------------------------------------------------------------------------
 CREATE TABLE lote (
-    id                  SERIAL          PRIMARY KEY,
+    id                  BIGSERIAL          PRIMARY KEY,
     producto_id         INTEGER         NOT NULL,
     numero_lote         VARCHAR(50)     NOT NULL,
     cantidad            INTEGER         NOT NULL DEFAULT 0,
@@ -323,7 +322,7 @@ COMMENT ON COLUMN lote.costo_unitario IS 'Costo real de compra. Usado en cálcul
 -- 4.09 MOVIMIENTO_INVENTARIO
 -- -----------------------------------------------------------------------------
 CREATE TABLE movimiento_inventario (
-    id               SERIAL          PRIMARY KEY,
+    id               BIGSERIAL          PRIMARY KEY,
     lote_id          INTEGER         NOT NULL,
     producto_id      INTEGER         NOT NULL,
     tipo_movimiento  VARCHAR(25)     NOT NULL,
@@ -365,7 +364,7 @@ CREATE TABLE movimiento_inventario (
             'baja_vencimiento'
         )),
 
-    CONSTRAINT ck_mi_cantidad CHECK (cantidad > 0),
+    CONSTRAINT ck_mi_cantidad CHECK (cantidad != 0),
 
     CONSTRAINT ck_mi_motivo_requerido
         CHECK (
@@ -400,7 +399,7 @@ COMMENT ON COLUMN movimiento_inventario.costo_unitario IS
 -- 4.10 RECEPCION_MERCADERIA
 -- -----------------------------------------------------------------------------
 CREATE TABLE recepcion_mercaderia (
-    id               SERIAL          PRIMARY KEY,
+    id               BIGSERIAL          PRIMARY KEY,
     orden_compra_id  INTEGER         NOT NULL,
     usuario_id       INTEGER         NOT NULL,
     fecha_hora       TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
@@ -423,7 +422,7 @@ COMMENT ON COLUMN recepcion_mercaderia.observaciones IS
 -- 4.11 RECEPCION_DETALLE
 -- -----------------------------------------------------------------------------
 CREATE TABLE recepcion_detalle (
-    id                  SERIAL          PRIMARY KEY,
+    id                  BIGSERIAL          PRIMARY KEY,
     recepcion_id        INTEGER         NOT NULL,
     orden_detalle_id    INTEGER         NOT NULL,
     cantidad_recibida   INTEGER         NOT NULL,
@@ -452,12 +451,12 @@ COMMENT ON COLUMN recepcion_detalle.observacion_item IS
 -- 4.12 ALERTA
 -- -----------------------------------------------------------------------------
 CREATE TABLE alerta (
-    id                   SERIAL          PRIMARY KEY,
+    id                   BIGSERIAL          PRIMARY KEY,
     tipo                 VARCHAR(25)     NOT NULL,
     criticidad           VARCHAR(10)     NOT NULL,
     mensaje              VARCHAR(500)    NOT NULL,
     producto_id          INTEGER         NOT NULL,
-    lote_id              INTEGER,
+    lote_id              bigint,
     leida                BOOLEAN         NOT NULL DEFAULT FALSE,
     usuario_gestiona_id  INTEGER,
     fecha_generacion     TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
@@ -515,7 +514,7 @@ COMMENT ON COLUMN alerta.leida IS
 -- 4.13 CLASIFICACION_ABC_HISTORIAL
 -- -----------------------------------------------------------------------------
 CREATE TABLE clasificacion_abc_historial (
-    id               SERIAL          PRIMARY KEY,
+    id               BIGSERIAL          PRIMARY KEY,
     fecha_calculo    TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     usuario_id       INTEGER         NOT NULL,
     total_productos  INTEGER         NOT NULL,
@@ -540,7 +539,7 @@ COMMENT ON COLUMN clasificacion_abc_historial.valor_total_inv IS
 -- 4.14 CLASIFICACION_ABC_DETALLE
 -- -----------------------------------------------------------------------------
 CREATE TABLE clasificacion_abc_detalle (
-    id                    SERIAL          PRIMARY KEY,
+    id                    BIGSERIAL          PRIMARY KEY,
     historial_id          INTEGER         NOT NULL,
     producto_id           INTEGER         NOT NULL,
     valor_inventario      NUMERIC(14,2)   NOT NULL,
@@ -580,7 +579,7 @@ COMMENT ON COLUMN clasificacion_abc_detalle.valor_inventario IS
 -- 4.15 REPORTE_EXPORTADO
 -- -----------------------------------------------------------------------------
 CREATE TABLE reporte_exportado (
-    id                    SERIAL          PRIMARY KEY,
+    id                    BIGSERIAL          PRIMARY KEY,
     tipo_reporte          VARCHAR(50)     NOT NULL,
     fecha_inicio_periodo  DATE,
     fecha_fin_periodo     DATE,
@@ -681,6 +680,65 @@ BEGIN
 END;
 $$;
 
+-- =============================================================================
+-- TRIGGER: Mantener stock_total de producto sincronizado con lotes
+-- Se dispara en INSERT, UPDATE de cantidad/estado, y DELETE en lote
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION fn_sincronizar_stock_producto()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE
+    v_producto_id INTEGER;
+    v_stock_real  INTEGER;
+BEGIN
+    -- Determinar qué producto_id fue afectado
+    v_producto_id := COALESCE(NEW.producto_id, OLD.producto_id);
+
+    -- Calcular stock real sumando solo lotes activos o agotados
+    -- (vencido no cuenta — cantidad ya es 0 pero por claridad lo excluimos)
+    SELECT COALESCE(SUM(cantidad), 0)
+      INTO v_stock_real
+      FROM farmacia.lote
+     WHERE producto_id = v_producto_id
+       AND estado IN ('activo', 'agotado');
+
+    -- Actualizar producto
+    UPDATE farmacia.producto
+       SET stock_total = v_stock_real
+     WHERE id = v_producto_id;
+
+    RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+CREATE TRIGGER trg_sincronizar_stock_producto
+    AFTER INSERT OR UPDATE OF cantidad, estado OR DELETE
+    ON farmacia.lote
+    FOR EACH ROW
+    EXECUTE FUNCTION fn_sincronizar_stock_producto();
+-- -----------------------------------------------------------------------------
+-- fn_bloquear_cambio_vencido()
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_bloquear_cambio_vencido()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    -- Si el lote ya estaba vencido y alguien intenta cambiarle el estado...
+    IF OLD.estado = 'vencido' AND NEW.estado != 'vencido' THEN
+        RAISE EXCEPTION 
+            '[LOTE] Regla de negocio: Un lote "vencido" (id=%) es un estado terminal. '
+            'No puede transicionar a estado "%".', OLD.id, NEW.estado;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$;
+
+
+
+CREATE TRIGGER trg_bloquear_cambio_vencido
+    BEFORE UPDATE OF estado ON lote
+    FOR EACH ROW EXECUTE FUNCTION fn_bloquear_cambio_vencido();
+
 CREATE TRIGGER trg_updated_at_usuario
     BEFORE UPDATE ON usuario
     FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
@@ -709,7 +767,7 @@ CREATE TRIGGER trg_updated_at_configuracion
 CREATE OR REPLACE FUNCTION fn_validar_fecha_vencimiento_lote()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
-    IF NEW.fecha_vencimiento <= CURRENT_DATE THEN
+    IF NEW.fecha_vencimiento < CURRENT_DATE THEN
         RAISE EXCEPTION
             '[LOTE] La fecha de vencimiento debe ser futura. Recibido: %, hoy: %.',
             NEW.fecha_vencimiento, CURRENT_DATE;
@@ -770,7 +828,6 @@ CREATE TRIGGER trg_bloquear_truncate_movimiento
     BEFORE TRUNCATE ON movimiento_inventario
     EXECUTE FUNCTION fn_bloquear_truncate_movimiento();
 
-
 -- =============================================================================
 -- 9. TRIGGERS DE NEGOCIO — ÓRDENES DE COMPRA
 -- =============================================================================
@@ -813,69 +870,11 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER trg_validar_transicion_orden
-    BEFORE UPDATE ON orden_compra
-    FOR EACH ROW EXECUTE FUNCTION fn_validar_transicion_orden();
-
-
-CREATE OR REPLACE FUNCTION fn_bloquear_detalle_orden_emitida()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE
-    v_orden_id INTEGER;
-    v_estado   VARCHAR(20);
-BEGIN
-    v_orden_id := COALESCE(NEW.orden_compra_id, OLD.orden_compra_id);
-
-    SELECT estado INTO v_estado
-    FROM orden_compra WHERE id = v_orden_id;
-
-    IF v_estado != 'borrador' THEN
-        RAISE EXCEPTION
-            '[ORDEN] No se puede modificar el detalle de la orden id=% (estado: ''%''). '
-            'Solo se permiten modificaciones en estado borrador.', v_orden_id, v_estado;
-    END IF;
-
-    RETURN COALESCE(NEW, OLD);
-END;
-$$;
-
-CREATE TRIGGER trg_bloquear_detalle_orden_emitida
-    BEFORE INSERT OR UPDATE OR DELETE ON orden_compra_detalle
-    FOR EACH ROW EXECUTE FUNCTION fn_bloquear_detalle_orden_emitida();
-
-
-CREATE OR REPLACE FUNCTION fn_validar_orden_para_recepcion()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE
-    v_estado VARCHAR(20);
-BEGIN
-    SELECT estado INTO v_estado
-    FROM orden_compra WHERE id = NEW.orden_compra_id;
-
-    IF v_estado IS NULL THEN
-        RAISE EXCEPTION '[RECEPCION] Orden de compra id=% no existe.', NEW.orden_compra_id;
-    END IF;
-
-    IF v_estado NOT IN ('emitida', 'recibida_parcial') THEN
-        RAISE EXCEPTION
-            '[RECEPCION] La orden id=% tiene estado ''%''. '
-            'Solo se puede recepcionar una orden en estado ''emitida'' o ''recibida_parcial''.',
-            NEW.orden_compra_id, v_estado;
-    END IF;
-
-    RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_validar_orden_para_recepcion
-    BEFORE INSERT ON recepcion_mercaderia
-    FOR EACH ROW EXECUTE FUNCTION fn_validar_orden_para_recepcion();
-
 
 CREATE OR REPLACE FUNCTION fn_bloquear_delete_producto()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM movimiento_inventario WHERE producto_id = OLD.id LIMIT 1) THEN
+    IF EXISTS (SELECT 1 FROM farmacia.movimiento_inventario WHERE producto_id = OLD.id LIMIT 1) THEN
         RAISE EXCEPTION
             '[PRODUCTO] No se puede eliminar el producto id=% porque tiene movimientos. '
             'Use activo = FALSE para desactivarlo.', OLD.id;
@@ -889,159 +888,6 @@ CREATE TRIGGER trg_bloquear_delete_producto
     FOR EACH ROW EXECUTE FUNCTION fn_bloquear_delete_producto();
 
 
--- =============================================================================
--- 12. FUNCIONES DE NEGOCIO
--- =============================================================================
-
-CREATE TYPE t_resultado_movimiento AS (
-    lote_id       INTEGER,
-    movimiento_id INTEGER
-);
-
--- -----------------------------------------------------------------------------
--- fn_entrada_directa()
--- -----------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_entrada_directa(
-    p_producto_id       INTEGER,
-    p_proveedor_id      INTEGER,
-    p_numero_lote       VARCHAR(50),
-    p_cantidad          INTEGER,
-    p_fecha_vencimiento DATE,
-    p_costo_unitario    NUMERIC(10,2),
-    p_usuario_id        INTEGER,
-    p_motivo            VARCHAR(255) DEFAULT NULL
-)
-RETURNS t_resultado_movimiento LANGUAGE plpgsql AS $$
-DECLARE
-    v_resultado   t_resultado_movimiento;
-    v_lote_id     INTEGER;
-    v_mov_id      INTEGER;
-BEGIN
-    IF p_cantidad <= 0 THEN
-        RAISE EXCEPTION '[ENTRADA] La cantidad debe ser mayor a cero. Recibido: %', p_cantidad;
-    END IF;
-    IF p_costo_unitario IS NULL OR p_costo_unitario <= 0 THEN
-        RAISE EXCEPTION '[ENTRADA] El costo unitario debe ser mayor a cero. Recibido: %', p_costo_unitario;
-    END IF;
-    IF p_numero_lote IS NULL OR LENGTH(TRIM(p_numero_lote)) = 0 THEN
-        RAISE EXCEPTION '[ENTRADA] El número de lote no puede estar vacío.';
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM usuario  WHERE id = p_usuario_id  AND activo = TRUE) THEN
-        RAISE EXCEPTION '[ENTRADA] Usuario id=% no existe o está desactivado.', p_usuario_id;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM producto WHERE id = p_producto_id AND activo = TRUE) THEN
-        RAISE EXCEPTION '[ENTRADA] Producto id=% no existe o está desactivado.', p_producto_id;
-    END IF;
-    IF p_proveedor_id IS NOT NULL THEN
-        IF NOT EXISTS (SELECT 1 FROM proveedor WHERE id = p_proveedor_id AND activo = TRUE) THEN
-            RAISE EXCEPTION '[ENTRADA] Proveedor id=% no existe o está desactivado.', p_proveedor_id;
-        END IF;
-    END IF;
-
-    INSERT INTO lote (producto_id, numero_lote, cantidad, fecha_vencimiento, costo_unitario)
-    VALUES (p_producto_id, p_numero_lote, p_cantidad, p_fecha_vencimiento, p_costo_unitario)
-    RETURNING id INTO v_lote_id;
-
-    INSERT INTO movimiento_inventario (
-        lote_id, producto_id, tipo_movimiento, cantidad,
-        costo_unitario, usuario_id, proveedor_id, motivo
-    ) VALUES (
-        v_lote_id, p_producto_id, 'entrada_directa', p_cantidad,
-        p_costo_unitario, p_usuario_id, p_proveedor_id, p_motivo
-    )
-    RETURNING id INTO v_mov_id;
-
-    v_resultado.lote_id       := v_lote_id;
-    v_resultado.movimiento_id := v_mov_id;
-    RETURN v_resultado;
-END;
-$$;
-
-COMMENT ON FUNCTION fn_entrada_directa IS
-    'Entrada de stock sin orden de compra (donación, muestras, reposición urgente).';
-
-
--- -----------------------------------------------------------------------------
--- fn_ajuste_inventario()
--- -----------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_ajuste_inventario(
-    p_lote_id       INTEGER,
-    p_tipo_ajuste   VARCHAR(25),
-    p_cantidad      INTEGER,
-    p_usuario_id    INTEGER,
-    p_motivo        VARCHAR(255),
-    p_referencia_id INTEGER DEFAULT NULL
-)
-RETURNS INTEGER LANGUAGE plpgsql AS $$
-DECLARE
-    v_mov_id      INTEGER;
-    v_producto_id INTEGER;
-BEGIN
-    IF p_tipo_ajuste NOT IN (
-        'ajuste_entrada', 'ajuste_salida',
-        'devolucion_cliente', 'devolucion_proveedor'
-    ) THEN
-        RAISE EXCEPTION
-            '[AJUSTE] Tipo de ajuste inválido: %. '
-            'Permitidos: ajuste_entrada, ajuste_salida, devolucion_cliente, devolucion_proveedor.',
-            p_tipo_ajuste;
-    END IF;
-    IF p_cantidad <= 0 THEN
-        RAISE EXCEPTION '[AJUSTE] La cantidad debe ser mayor a cero. Recibido: %', p_cantidad;
-    END IF;
-    IF p_motivo IS NULL OR LENGTH(TRIM(p_motivo)) = 0 THEN
-        RAISE EXCEPTION '[AJUSTE] El motivo es obligatorio para ajustes y devoluciones.';
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM usuario WHERE id = p_usuario_id AND activo = TRUE) THEN
-        RAISE EXCEPTION '[AJUSTE] Usuario id=% no existe o está desactivado.', p_usuario_id;
-    END IF;
-    IF p_tipo_ajuste = 'devolucion_cliente' AND p_referencia_id IS NULL THEN
-        RAISE EXCEPTION
-            '[AJUSTE] devolucion_cliente requiere referencia_id (id del movimiento de salida original).';
-    END IF;
-
-    SELECT producto_id INTO v_producto_id
-    FROM lote WHERE id = p_lote_id;
-
-    IF v_producto_id IS NULL THEN
-        RAISE EXCEPTION '[AJUSTE] Lote id=% no encontrado.', p_lote_id;
-    END IF;
-
-    IF p_tipo_ajuste = 'devolucion_cliente' THEN
-        IF NOT EXISTS (
-            SELECT 1 FROM lote
-            WHERE id = p_lote_id AND fecha_vencimiento > CURRENT_DATE
-        ) THEN
-            RAISE EXCEPTION
-                '[AJUSTE] No se puede devolver al lote id=% porque está vencido.', p_lote_id;
-        END IF;
-        IF NOT EXISTS (
-            SELECT 1 FROM movimiento_inventario
-            WHERE id = p_referencia_id
-              AND producto_id = v_producto_id
-              AND tipo_movimiento = 'salida'
-        ) THEN
-            RAISE EXCEPTION
-                '[AJUSTE] referencia_id=% no corresponde a un movimiento de salida válido del producto id=%.',
-                p_referencia_id, v_producto_id;
-        END IF;
-    END IF;
-
-    INSERT INTO movimiento_inventario (
-        lote_id, producto_id, tipo_movimiento, cantidad,
-        usuario_id, motivo, referencia_id
-    ) VALUES (
-        p_lote_id, v_producto_id, p_tipo_ajuste, p_cantidad,
-        p_usuario_id, p_motivo, p_referencia_id
-    )
-    RETURNING id INTO v_mov_id;
-
-    RETURN v_mov_id;
-END;
-$$;
-
-COMMENT ON FUNCTION fn_ajuste_inventario IS
-    'Ajustes manuales de inventario y devoluciones. Genera movimiento auditable.';
 
 
 -- -----------------------------------------------------------------------------
@@ -1085,10 +931,10 @@ INSERT INTO categoria (nombre, descripcion) VALUES
 INSERT INTO usuario (nombre_completo, password_hash, rol, telefono,email)
 VALUES (
     'Administrador del Sistema',
-    '$2b$12$REEMPLAZAR.ESTE.HASH.CON.UNO.GENERADO.ANTES.DE.PRODUCCION',
+    '$2a$10$FUpbe2vitBqj0EXf1UGU1OmBJljF2GQovZRlWhEpxqoXWkriKv0Ea',
     'ADMINISTRADOR',
     75912252,
-    'administrador@gmail.com'
+    'el_correo_que_usas_en_postman@ejemplo.com'
 );
 
 
