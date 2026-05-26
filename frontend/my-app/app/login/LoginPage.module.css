@@ -1,0 +1,411 @@
+.root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8eaed;
+  padding: 24px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Card ───────────────────────────────────────── */
+.card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  max-width: 860px;
+  min-height: 480px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #cdd0d5;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Panel izquierdo ────────────────────────────── */
+.panelLeft {
+  background: #0f1623;
+  padding: 40px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+
+.panelLeft::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.panelLeft::after {
+  content: '';
+  position: absolute;
+  bottom: -40px;
+  left: -40px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+}
+
+.brandMark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.brandIcon {
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.brandName {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.leftHeadline {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.leftTitle {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.15;
+  margin: 0 0 12px;
+  letter-spacing: -0.02em;
+}
+
+.leftTitle span {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.leftSubtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.42);
+  line-height: 1.65;
+  margin: 0 0 28px;
+  max-width: 220px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.statBox {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 12px 14px;
+}
+
+.statValue {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 18px;
+  font-weight: 500;
+  color: #ffffff;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.statLabel {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.32);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.leftFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  margin-top: 24px;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.statusText {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.28);
+  letter-spacing: 0.04em;
+}
+
+/* ── Panel derecho ──────────────────────────────── */
+.panelRight {
+  background: #ffffff;
+  padding: 44px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.formHeader {
+  margin-bottom: 28px;
+}
+
+.formEyebrow {
+  font-size: 10px;
+  font-weight: 500;
+  color: #8b9099;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 6px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.formTitle {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f1623;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+/* ── Campos ─────────────────────────────────────── */
+.fieldGroup {
+  margin-bottom: 14px;
+}
+
+.fieldLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #45464d;
+  margin-bottom: 6px;
+  letter-spacing: 0.01em;
+}
+
+.fieldInput {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #191c1e;
+  background: #f7f9fb;
+  border: 1px solid #dde0e4;
+  border-radius: 4px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, background 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.fieldInput::placeholder {
+  color: #b0b4bb;
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: 0;
+}
+
+.fieldInput:focus {
+  border-color: #0f1623;
+  background: #ffffff;
+}
+
+.fieldInputError {
+  border-color: #ba1a1a;
+  background: #fff8f8;
+}
+
+.fieldError {
+  font-size: 11px;
+  color: #ba1a1a;
+  margin-top: 5px;
+  display: block;
+}
+
+/* ── Fila checkbox / olvidé ─────────────────────── */
+.fieldRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 0 20px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: #6b7280;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxLabel input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  accent-color: #0f1623;
+  cursor: pointer;
+}
+
+.forgotLink {
+  font-size: 12px;
+  color: #0f1623;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(15, 22, 35, 0.2);
+  padding-bottom: 1px;
+  transition: border-color 0.15s;
+}
+
+.forgotLink:hover {
+  border-color: #0f1623;
+}
+
+/* ── Botón primario ─────────────────────────────── */
+.btnPrimary {
+  width: 100%;
+  height: 40px;
+  background: #0f1623;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: #1e2d47;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Spinner ────────────────────────────────────── */
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Error global ───────────────────────────────── */
+.alertError {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #ffdad6;
+  border: 1px solid #f5b8b4;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.alertErrorText {
+  font-size: 12px;
+  color: #93000a;
+  line-height: 1.5;
+}
+
+/* ── Divisor y footer ───────────────────────────── */
+.divider {
+  height: 1px;
+  background: #eceef0;
+  margin: 20px 0;
+}
+
+.formFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  background: #f2f4f6;
+  border: 1px solid #e0e3e5;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #6b7280;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.roleDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotAdmin    { background: #0f1623; }
+.dotOperador { background: #7c839b; }
+
+/* ── Responsive ─────────────────────────────────── */
+@media (max-width: 640px) {
+  .card {
+    grid-template-columns: 1fr;
+  }
+
+  .panelLeft {
+    padding: 28px 24px;
+    min-height: auto;
+  }
+
+  .leftTitle {
+    font-size: 22px;
+  }
+
+  .panelRight {
+    padding: 32px 24px;
+  }
+}
