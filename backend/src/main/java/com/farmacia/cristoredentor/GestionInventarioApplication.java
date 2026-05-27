@@ -19,7 +19,7 @@ public class GestionInventarioApplication {
     public static void main(String[] args) {
         ConfigurableApplicationContext ctx = SpringApplication.run(GestionInventarioApplication.class, args);
         Environment env = ctx.getEnvironment();
-        String port = env.getProperty("server.port", "8080");
+        String port = env.getProperty("server.port", "8082");
 
         log.info("Backend corriendo en: http://localhost:{}", port);
         log.info("Swagger UI:           http://localhost:{}/swagger-ui/index.html", port);
