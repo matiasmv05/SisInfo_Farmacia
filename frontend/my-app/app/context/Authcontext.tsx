@@ -80,3 +80,41 @@ export function useAuth(): AuthContextValue {
   if (!ctx) throw new Error("useAuth debe usarse dentro de <AuthProvider>");
   return ctx;
 }
+
+// ─── AQUÍ AGREGAMOS EL HOOK QUE FALTABA ──────────────────────────────────────
+
+interface RequireAuthOptions {
+  /** Si se pasa, solo ese rol puede acceder. Sin valor = cualquier usuario autenticado. */
+  rolRequerido?: AuthUser["rol"];
+  /** Ruta a la que redirigir si no hay sesión (default: /login) */
+  redirectTo?: string;
+}
+
+/**
+ * Protege la página que lo usa.
+ *
+ * Uso:
+ * const { user } = useRequireAuth();
+ * const { user } = useRequireAuth({ rolRequerido: "ADMINISTRADOR" });
+ */
+export function useRequireAuth(options: RequireAuthOptions = {}) {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const { rolRequerido, redirectTo = "/login" } = options;
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    if (!user) {
+      router.replace(redirectTo);
+      return;
+    }
+
+    if (rolRequerido && user.rol !== rolRequerido) {
+      // Tiene sesión pero no el rol correcto — redirigir a su área
+      router.replace(user.rol === "ADMINISTRADOR" ? "/dashboard" : "/inventario");
+    }
+  }, [user, isLoading, rolRequerido, redirectTo, router]);
+
+  return { user, isLoading };
+}

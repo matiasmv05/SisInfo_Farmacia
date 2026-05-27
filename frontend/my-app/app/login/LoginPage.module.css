@@ -1,5 +1,7 @@
 .root {
   min-height: 100vh;
+  width: 100%;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,18 +15,17 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: 100%;
-  max-width: 860px;
-  min-height: 480px;
-  border-radius: 6px;
+  max-width: 1024px;
+  min-height: 600px;
+  border-radius: 12px;
   overflow: hidden;
   border: 1px solid #cdd0d5;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
 }
 
-/* ── Panel izquierdo ────────────────────────────── */
 .panelLeft {
   background: #0f1623;
-  padding: 40px 36px;
+  padding: 60px 56px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -168,7 +169,7 @@
 /* ── Panel derecho ──────────────────────────────── */
 .panelRight {
   background: #ffffff;
-  padding: 44px 40px;
+  padding: 60px 56px;
   display: flex;
   flex-direction: column;
   justify-content: center;
