@@ -93,6 +93,12 @@ export const SideNavBar: React.FC = () => {
           active={pathname === "/proveedores"}
         />
         <NavItem
+          href="/orden-compra"
+          icon="receipt_long"
+          label="Órdenes de Compra"
+          active={pathname === "/orden-compra"}
+        />
+        <NavItem
           href="/reportes"
           icon="assessment"
           label="Reportes"
