@@ -1083,12 +1083,20 @@ INSERT INTO categoria (nombre, descripcion) VALUES
     ('Pediátrico',              'Productos para bebés y niños menores de 12 años');
 
 INSERT INTO usuario (nombre_completo, password_hash, rol, telefono,email)
-VALUES (
+VALUES 
+(
     'Administrador del Sistema',
-    '$2b$12$REEMPLAZAR.ESTE.HASH.CON.UNO.GENERADO.ANTES.DE.PRODUCCION',
+    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
     'ADMINISTRADOR',
-    75912252,
+    '75912252',
     'administrador@gmail.com'
+),
+(
+    'Operador de Farmacia',
+    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+    'OPERADOR',
+    '75912253',
+    'operador@gmail.com'
 );
 
 

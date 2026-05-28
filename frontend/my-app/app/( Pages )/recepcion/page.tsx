@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { fetchOrdenesApi, fetchOrdenByIdApi } from "../../api/OrdenCompra.api";
 import { registrarRecepcionApi, fetchRecepcionesPorOrdenApi } from "../../api/Recepcion.api";
-import { OrdenCompraResponseDto, OrdenCompraItemDto } from "../../types/OrdenCompra.types";
+import { OrdenCompraResponseDto } from "../../types/OrdenCompra.types";
 import { RecepcionDetalleRequestDto, RecepcionMercaderiaResponseDto } from "../../types/Recepcion.types";
 
 interface FormItem extends RecepcionDetalleRequestDto {
@@ -103,13 +103,27 @@ export default function RecepcionPage() {
     }
   }, [selectedOrderId, loadOrderDetails]);
 
+  const cleanDateValue = (val: string): string => {
+    if (!val) return "";
+    const parts = val.split("-");
+    if (parts[0] && parts[0].length > 4) {
+      parts[0] = parts[0].substring(0, 4);
+      return parts.join("-");
+    }
+    return val;
+  };
+
   const handleItemChange = (
     ordenDetalleId: number,
     field: keyof FormItem,
     value: string | number
   ) => {
+    let finalValue = value;
+    if (field === "fechaVencimiento" && typeof value === "string") {
+      finalValue = cleanDateValue(value);
+    }
     setItems((prev) =>
-      prev.map((item) => (item.ordenDetalleId === ordenDetalleId ? { ...item, [field]: value } : item))
+      prev.map((item) => (item.ordenDetalleId === ordenDetalleId ? { ...item, [field]: finalValue } : item))
     );
   };
 
@@ -147,6 +161,12 @@ export default function RecepcionPage() {
       }
       if (!item.fechaVencimiento) {
         setError(`Ingrese la fecha de vencimiento para ${item.productoNombre}.`);
+        return;
+      }
+      
+      const yearPart = item.fechaVencimiento.split("-")[0];
+      if (yearPart && yearPart.length > 4) {
+        setError(`El año de la fecha de vencimiento de ${item.productoNombre} no puede superar los 4 dígitos.`);
         return;
       }
       
@@ -311,8 +331,13 @@ export default function RecepcionPage() {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center text-on-surface-variant font-body-md h-full">
-              Seleccione una orden para ver los detalles.
+            <div className="flex flex-col items-center justify-center text-center p-6 text-on-surface-variant font-body-md h-full max-w-lg mx-auto">
+              <span className="material-symbols-outlined text-[36px] text-primary/60 mb-2">
+                arrow_back
+              </span>
+              <p className="leading-relaxed">
+                Por favor, selecciona una orden de compra en la lista lateral para cargar los productos y procesar la entrada de mercadería.
+              </p>
             </div>
           )}
         </div>
