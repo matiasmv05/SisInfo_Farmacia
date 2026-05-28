@@ -6,6 +6,7 @@ import java.time.OffsetDateTime;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.farmacia.cristoredentor.Enum.CategoriaProducto;
 import com.farmacia.cristoredentor.Enum.ClasificacionABC;
 
 import jakarta.persistence.Column;
@@ -16,8 +17,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -43,9 +42,9 @@ public class Producto {
     @Column(name = "nombre", nullable = false, length = 150)
     private String nombre;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "categoria_id", nullable = false)
-    private Categoria categoriaid;
+   @Enumerated(EnumType.STRING) 
+   @Column(name = "categoria")
+   private CategoriaProducto categoria;
 
     @Column(name = "laboratorio", nullable = false, length = 100)
     private String laboratorio;

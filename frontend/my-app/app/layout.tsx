@@ -1,5 +1,4 @@
 import "./globals.css";
-
 import { AuthProvider } from "./context/Authcontext";
 
 export default function RootLayout({
@@ -7,7 +6,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-
   return (
     <html lang="es" className="light">
       <head>

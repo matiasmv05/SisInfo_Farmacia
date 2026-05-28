@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -202,6 +203,36 @@ public ClasificacionAbcHistorialDTO ejecutarCalculo(
 
     return toHistorialDTO(historial, detalles);
 }
+
+
+@Async
+@Transactional
+public void recalcularAbcPostMovimiento() {
+    // Buscar cualquier administrador activo como autor del recálculo automático.
+    // Si no hay ninguno (caso raro), el recálculo se omite silenciosamente.
+    Usuario usuario = usuarioRepo
+        .findFirstByRolAndActivoTrue(UserRole.ADMINISTRADOR)
+        .orElse(null);
+ 
+    if (usuario == null) {
+        log.warn("[ABC Post-Movimiento] No hay administrador activo — recálculo omitido.");
+        return;
+    }
+ 
+    try {
+        ejecutarCalculo(usuario, "Recálculo automático post-movimiento");
+        log.info("[ABC Post-Movimiento] Recálculo completado.");
+    } catch (BusinessException e) {
+        // BusinessException ocurre cuando no hay movimientos en el período.
+        // Es un estado válido (farmacia nueva, período de configuración largo).
+        // No loguear como error para no contaminar los logs.
+        log.debug("[ABC Post-Movimiento] Sin datos suficientes: {}", e.getMessage());
+    } catch (Exception e) {
+        // Cualquier otro error no debe romper nada — la salida ya fue registrada.
+        log.error("[ABC Post-Movimiento] Error inesperado: {}", e.getMessage(), e);
+    }
+}
+
 
     // -------------------------------------------------------------------------
     // Consultas

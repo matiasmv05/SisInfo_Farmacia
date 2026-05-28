@@ -2,12 +2,13 @@ package com.farmacia.cristoredentor.module.Producto.dto;
 
 import java.math.BigDecimal;
 
+import com.farmacia.cristoredentor.Enum.CategoriaProducto;
+
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,8 +30,7 @@ public class ProductoRequestDTO {
     private String nombre;
 
     @NotNull(message = "La categoría es obligatoria")
-    @Positive(message = "El id de categoría debe ser positivo")
-    private Integer categoriaId;
+    private CategoriaProducto categoria;
 
     @NotBlank(message = "El laboratorio es obligatorio")
     @Size(max = 100)

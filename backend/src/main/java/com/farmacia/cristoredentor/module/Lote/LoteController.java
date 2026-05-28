@@ -73,13 +73,12 @@ public class LoteController {
      * Marca un lote como vencido, poniendo su cantidad a 0.
      * Requiere un motivo obligatorio en el body.
      */
-        @PreAuthorize("hasRole('ADMINISTRADOR')")
-    @PatchMapping("/{id}/vencido")
-    public ResponseEntity<LoteDetalleDTO> marcarVencido(
-            @Valid @RequestBody MarcarVencidoRequestDTO request,
+   @PatchMapping("/{id}/vencido")
+public ResponseEntity<LoteDetalleDTO> marcarVencido(
+        @PathVariable Integer id,                    
+        @Valid @RequestBody MarcarVencidoRequestDTO request,
         Authentication authentication) {
-        
-        Integer usuarioId = (Integer) authentication.getPrincipal();
-        return ResponseEntity.ok(service.marcarVencidoComoDTO(usuarioId, request.getMotivo()));
-    }
+    
+    return ResponseEntity.ok(service.marcarVencidoComoDTO(id, request.getMotivo())); 
+}
 }

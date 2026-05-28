@@ -1,55 +1,185 @@
-import { AlertaInventario, PaginatedResponse } from "../types/dashboard.types";
+// app/api/Dashboard.api.ts
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { AlertaDetalleDTO, PaginatedResponse } from "../types/dashboard.types";
+import { AbcHistorialDTO } from "../types/Abc.types";
 
-function authHeaders(): HeadersInit {
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+
+function getAuthHeaders(): HeadersInit {
   const token =
-    localStorage.getItem("farmacia_token") ??
-    sessionStorage.getItem("farmacia_token");
+    typeof window !== "undefined"
+      ? (sessionStorage.getItem("farmacia_token") ??
+          localStorage.getItem("farmacia_token"))
+      : null;
   return {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
-// ── Alertas críticas de inventario ───────────────────────────
-export async function getAlertasCriticas(
+async function handleResponse<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    let msg = `Error ${res.status}`;
+    try {
+      const body = await res.json();
+      msg = body?.message ?? body?.error ?? msg;
+    } catch {
+      /* sin body JSON */
+    }
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+// ─── GET /api/alertas?leida=false&page=0&limit=10 ────────────────────────────
+export async function getAlertasActivasApi(
   page = 0,
   limit = 10
-): Promise<PaginatedResponse<AlertaInventario>> {
+): Promise<PaginatedResponse<AlertaDetalleDTO>> {
   const res = await fetch(
-    `${API_BASE}/api/productos/stock-critico?page=${page}&limit=${limit}`,
-    { headers: authHeaders() }
+    `${BASE_URL}/api/alertas?leida=false&page=${page}&limit=${limit}`,
+    { headers: getAuthHeaders() }
   );
-  if (!res.ok) throw new Error("Error al obtener alertas críticas");
-  return res.json();
+  return handleResponse(res);
 }
 
-// ── KPIs del dashboard ────────────────────────────────────────
-export async function getKpiDashboard(): Promise<{
-  alertasActivas: number;
-  alertasCriticas: number;
-  alertasMedias: number;
-  porcentajeStockCritico: number;
-  porcentajeProximosVencer: number;
-  ordenesPendientes: number;
+// ─── GET /api/alertas/resumen ─────────────────────────────────────────────────
+// Devuelve conteos por criticidad para los KPI cards.
+// Si el backend no tiene este endpoint, lo calculamos desde la lista de alertas.
+export async function getResumenAlertasApi(): Promise<{
+  total: number;
+  alta: number;
+  media: number;
+  baja: number;
 }> {
-  const res = await fetch(`${API_BASE}/api/dashboard/kpi`, {
-    headers: authHeaders(),
+  const res = await fetch(`${BASE_URL}/api/alertas/resumen`, {
+    headers: getAuthHeaders(),
   });
-  if (!res.ok) throw new Error("Error al obtener KPIs");
-  return res.json();
+  // Si no existe el endpoint (404), calculamos desde la lista completa
+  if (res.status === 404) {
+    const todas = await getAlertasActivasApi(0, 100);
+    const items = todas.data ?? [];
+    return {
+      total: todas.total ?? items.length,
+      alta:  items.filter((a) => a.criticidad === "ALTA").length,
+      media: items.filter((a) => a.criticidad === "MEDIA").length,
+      baja:  items.filter((a) => a.criticidad === "BAJA").length,
+    };
+  }
+  return handleResponse(res);
 }
 
-// ── Distribución ABC ──────────────────────────────────────────
-export async function getDistribucionABC(): Promise<{
-  A: { porcentajeInversion: number; porcentajeSkus: number };
-  B: { porcentajeInversion: number; porcentajeSkus: number };
-  C: { porcentajeInversion: number; porcentajeSkus: number };
-}> {
-  const res = await fetch(`${API_BASE}/api/productos/clasificacion-abc/resumen`, {
-    headers: authHeaders(),
+// ─── GET /api/clasificacion-abc/ultimo ───────────────────────────────────────
+// Reutilizamos el mismo endpoint que usa AbcContext para la distribución ABC.
+export async function getUltimoAbcDashboardApi(): Promise<AbcHistorialDTO> {
+  const res = await fetch(`${BASE_URL}/api/clasificacion-abc/ultimo`, {
+    headers: getAuthHeaders(),
   });
-  if (!res.ok) throw new Error("Error al obtener distribución ABC");
-  return res.json();
+  return handleResponse(res);
+}
+
+// ─── GET /api/ordenes?estado=PENDIENTE&page=0&limit=1 ────────────────────────
+// Solo necesitamos el total de órdenes pendientes.
+export async function getOrdenesPendientesCountApi(): Promise<number> {
+  const res = await fetch(
+    `${BASE_URL}/api/ordenes?estado=PENDIENTE&page=0&limit=1`,
+    { headers: getAuthHeaders() }
+  );
+  if (!res.ok) return 0; // no bloquear el dashboard si falla
+  const body = await res.json();
+  // El backend devuelve PaginatedResponseDto con totalElements
+  return body.totalElements ?? body.total ?? 0;
+}
+
+// ─── GET /api/productos/stock-critico ─────────────────────────────────────────
+// Para calcular % stock crítico sobre el total de SKUs.
+export async function getStockCriticoCountApi(): Promise<{
+  criticos: number;
+  totalSkus: number;
+}> {
+  // Obtener total de productos y productos en stock crítico en paralelo
+  const [critiRes, totalRes] = await Promise.all([
+    fetch(`${BASE_URL}/api/productos/stock-critico?page=0&limit=1`, {
+      headers: getAuthHeaders(),
+    }),
+    fetch(`${BASE_URL}/api/productos?page=0&limit=1`, {
+      headers: getAuthHeaders(),
+    }),
+  ]);
+
+  const criticos = critiRes.ok
+    ? ((await critiRes.json()) as PaginatedResponse<unknown>).totalElements ??
+      ((await critiRes.clone().json()) as PaginatedResponse<unknown>).total ??
+      0
+    : 0;
+
+  const totalSkus = totalRes.ok
+    ? ((await totalRes.json()) as PaginatedResponse<unknown>).totalElements ??
+      ((await totalRes.clone().json()) as PaginatedResponse<unknown>).total ??
+      0
+    : 0;
+
+  return { criticos, totalSkus };
+}
+
+// ─── PATCH /api/alertas/{id}/leida ────────────────────────────────────────────
+// Marca una alerta como leída tras ejecutar una acción sobre ella.
+// El body que espera el backend es AlertaMarcarLeidaDTO — revisá si tiene campos
+// adicionales; si solo es { leida: true }, esto está completo.
+export async function marcarAlertaLeidaApi(alertaId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/api/alertas/${alertaId}/leida`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ leida: true }),
+  });
+  if (!res.ok) {
+    let msg = `Error ${res.status}`;
+    try {
+      const body = await res.json();
+      msg = body?.message ?? body?.error ?? msg;
+    } catch { /* sin body JSON */ }
+    throw new Error(msg);
+  }
+}
+
+// ─── PATCH /api/lotes/{id}/vencido ───────────────────────────────────────────
+export async function marcarLoteVencidoApi(
+  loteId: number,
+  motivo: string,
+): Promise<void> {
+  const res = await fetch(`${BASE_URL}/api/lotes/${loteId}/vencido`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ motivo }),
+  });
+  if (!res.ok) {
+    let msg = `Error ${res.status}`;
+    try {
+      const body = await res.json();
+      msg = body?.message ?? body?.error ?? msg;
+    } catch { /* sin body JSON */ }
+    throw new Error(msg);
+  }
+}
+
+// ─── POST /api/movimientos/salida ─────────────────────────────────────────────
+// Registra una salida rápida desde el dashboard.
+// Espeja SalidaRequestDTO del backend — ajustá los campos si tu DTO tiene más.
+export async function registrarSalidaApi(
+  productoId: number,
+  cantidad: number,
+): Promise<void> {
+  const res = await fetch(`${BASE_URL}/api/movimientos/salida`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ productoId, cantidad }),
+  });
+  if (!res.ok) {
+    let msg = `Error ${res.status}`;
+    try {
+      const body = await res.json();
+      msg = body?.message ?? body?.error ?? msg;
+    } catch { /* sin body JSON */ }
+    throw new Error(msg);
+  }
 }

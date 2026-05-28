@@ -119,7 +119,7 @@ public class RecepcionMercaderiaService {
             );
 
             // 4c. Actualizar stock total del producto
-                  productoService.sincronizarStock(producto.getId());
+                  productoService.reaplicarClasificacionAbc(producto.getId());
             // 4d. Vincular detalle a la recepción
             RecepcionDetalle detalle = RecepcionDetalle.builder()
                 .recepcion(recepcion)

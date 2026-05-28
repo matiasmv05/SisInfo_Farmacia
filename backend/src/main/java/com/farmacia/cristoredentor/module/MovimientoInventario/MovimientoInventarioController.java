@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.farmacia.cristoredentor.module.Lote.dto.LoteRequestDTO;
 import com.farmacia.cristoredentor.module.MovimientoInventario.dto.AjusteRequestDTO;
 import com.farmacia.cristoredentor.module.MovimientoInventario.dto.BajaVencimientoRequestDTO;
 import com.farmacia.cristoredentor.module.MovimientoInventario.dto.MovimientoDetalleDTO;
@@ -31,26 +30,6 @@ public class MovimientoInventarioController {
 
     public MovimientoInventarioController(MovimientoInventarioService service) {
         this.service = service;
-    }
-
-    // =========================================================================
-    // POST /api/movimientos/entrada-directa
-    // Crea un lote nuevo y registra movimiento entrada_directa.
-    // Body: LoteRequestDTO (productoId, numeroLote, cantidad,
-    //                        fechaVencimiento, costoUnitario)
-    // =========================================================================
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    @PostMapping("/entrada-directa")
-    public ResponseEntity<MovimientoDetalleDTO> entradaDirecta(
-            @Valid @RequestBody LoteRequestDTO dto,
-            Authentication authentication
-        ) {
-
-        Integer usuarioId = (Integer) authentication.getPrincipal();
-        // TODO: reemplazar 1 por el ID del usuario autenticado desde JWT
-        MovimientoDetalleDTO resultado = service.entradaDirecta(dto,usuarioId);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(resultado);
     }
 
     // =========================================================================

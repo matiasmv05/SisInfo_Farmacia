@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.farmacia.cristoredentor.Entity.Producto;
+import com.farmacia.cristoredentor.Enum.CategoriaProducto;
 import com.farmacia.cristoredentor.Enum.ClasificacionABC;
 
 import jakarta.persistence.LockModeType;
@@ -62,15 +63,30 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
      int calcularStockReal(Integer productoId);
 
 @Query("""
+    SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END 
+    FROM Producto p 
+    WHERE p.activo = true 
+      AND LOWER(p.nombre) = LOWER(:nombre) 
+      AND LOWER(p.concentracion) = LOWER(:concentracion) 
+      AND LOWER(p.presentacion) = LOWER(:presentacion)
+    """)
+boolean existeProductoDuplicado(
+    @Param("nombre") String nombre, 
+    @Param("concentracion") String concentracion, 
+    @Param("presentacion") String presentacion
+);
+
+@Query("""
     SELECT p FROM Producto p
     WHERE p.activo = true
       AND (:nombre IS NULL OR LOWER(p.nombre) LIKE LOWER(CONCAT('%', CAST(:nombre AS string), '%')))
-      AND (:categoriaId IS NULL OR p.categoriaid.id = :categoriaId)
+      AND (:categoria IS NULL OR p.categoria = :categoria)
     ORDER BY p.nombre ASC
     """)
 Page<Producto> findByFiltros(
     @Param("nombre") String nombre,
-    @Param("categoriaId") Integer categoriaId,
+    @Param("categoria") CategoriaProducto categoria, 
     Pageable pageable
+
 );
 }

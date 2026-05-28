@@ -10,11 +10,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.farmacia.cristoredentor.Entity.Categoria;
 import com.farmacia.cristoredentor.Entity.Producto;
+import com.farmacia.cristoredentor.Enum.CategoriaProducto;
 import com.farmacia.cristoredentor.exceptions.BusinessException;
 import com.farmacia.cristoredentor.exceptions.ResourceNotFoundException;
-import com.farmacia.cristoredentor.module.Categoria.CategoriaRepository;
+import com.farmacia.cristoredentor.module.ClasificacionAbc.ClasificacionAbcDetalleRepository;
 import com.farmacia.cristoredentor.module.Lote.LoteRepository;
 import com.farmacia.cristoredentor.module.Producto.dto.ProductoDetalleDTO;
 import com.farmacia.cristoredentor.module.Producto.dto.ProductoRequestDTO;
@@ -25,33 +25,32 @@ import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
 public class ProductoService {
 
     private final ProductoRepository productoRepo;
-    private final CategoriaRepository categoriaRepo;
     private final ModelMapper modelMapper;
     private final LoteRepository loteRepo; 
+    private final ClasificacionAbcDetalleRepository abcDetalleRepo;
+
 
     public ProductoService(ProductoRepository productoRepo,
-                           CategoriaRepository categoriaRepo,
                            ModelMapper modelMapper ,  
-                           LoteRepository loteRepo                     
+                           LoteRepository loteRepo    ,
+                           ClasificacionAbcDetalleRepository abcDetalleRepo
                         ) {
         this.productoRepo = productoRepo;
-        this.categoriaRepo = categoriaRepo;
         this.modelMapper = modelMapper;
         this.loteRepo = loteRepo;
+        this.abcDetalleRepo = abcDetalleRepo;
     }
 
     // Crear
     public ProductoDetalleDTO crearProducto(ProductoRequestDTO dto) {
+        validarProducto(dto);
         validarPrecios(dto);
         validarStocks(dto);
 
-        Categoria categoria = categoriaRepo.findById(dto.getCategoriaId())
-            .orElseThrow(() -> new ResourceNotFoundException(
-                "Categoría no encontrada: " + dto.getCategoriaId()));
 
         Producto producto = Producto.builder()
                             .nombre(dto.getNombre())
-                            .categoriaid(categoria)
+                            .categoria(dto.getCategoria())
                             .laboratorio(dto.getLaboratorio())
                             .concentracion(dto.getConcentracion())
                             .presentacion(dto.getPresentacion())
@@ -85,10 +84,10 @@ public class ProductoService {
 
     @Transactional(readOnly = true)
 public PaginatedResponseDto<ProductoDetalleDTO> listarFiltrado(
-        Integer page, Integer limit, String nombre, Integer categoriaId) {
+        Integer page, Integer limit, String nombre, CategoriaProducto categoria) {
 
     Pageable pageable = PageRequest.of(page, limit, Sort.by("nombre").ascending());
-    Page<Producto> resultado = productoRepo.findByFiltros(nombre, categoriaId, pageable);
+    Page<Producto> resultado = productoRepo.findByFiltros(nombre, categoria, pageable);
 
     List<ProductoDetalleDTO> data = resultado.getContent()
         .stream()
@@ -125,12 +124,8 @@ public PaginatedResponseDto<ProductoDetalleDTO> listarFiltrado(
 
         Producto producto = buscarEntidadActiva(id);
 
-        Categoria categoria = categoriaRepo.findById(dto.getCategoriaId())
-            .orElseThrow(() -> new ResourceNotFoundException(
-                "Categoría no encontrada: " + dto.getCategoriaId()));
-
         producto.setNombre(dto.getNombre());
-        producto.setCategoriaid(categoria);
+        producto.setCategoria(dto.getCategoria());
         producto.setLaboratorio(dto.getLaboratorio());
         producto.setConcentracion(dto.getConcentracion());
         producto.setPresentacion(dto.getPresentacion());
@@ -169,15 +164,19 @@ public PaginatedResponseDto<ProductoDetalleDTO> listarFiltrado(
 
      // ─── Gestión de stock ────────────────────────────────────────────
 
-    public void sincronizarStock(Integer productoId) {
-    Producto producto = productoRepo.findByIdWithLock(productoId)
+    public void reaplicarClasificacionAbc(Integer productoId) {
+    Producto producto = productoRepo.findById(productoId)
         .orElseThrow(() -> new ResourceNotFoundException(
             "Producto no encontrado: " + productoId));
 
-    int stockReal = loteRepo.calcularStockReal(productoId);
-    producto.setStockTotal(stockReal);
+    abcDetalleRepo
+        .findUltimoAbcByProducto(productoId)
+        .ifPresent(detalle ->
+            producto.setClasificacionAbc(detalle.getClasificacion())
+        );
+
     productoRepo.save(producto);
-   }
+}
 
     // -------------------------------------------------------------------------
     // Métodos internos
@@ -197,13 +196,21 @@ public PaginatedResponseDto<ProductoDetalleDTO> listarFiltrado(
 
    private ProductoDetalleDTO toDetalleDTO(Producto p) {
     ProductoDetalleDTO dto = modelMapper.map(p, ProductoDetalleDTO.class);
-    dto.setCategoria(p.getCategoriaid().getNombre());
+    dto.setCategoria(p.getCategoria());
     dto.setClasificacionAbc(
         p.getClasificacionAbc() != null 
             ? p.getClasificacionAbc().name() 
             : null
     );
     return dto;
+}
+
+private void validarProducto(ProductoRequestDTO dto){
+
+    if(productoRepo.existeProductoDuplicado(dto.getNombre(), dto.getConcentracion(), dto.getPresentacion())){
+         throw new BusinessException(
+                "Existe el mismo producto en el inventario");
+    }
 }
 
     private void validarPrecios(ProductoRequestDTO dto) {

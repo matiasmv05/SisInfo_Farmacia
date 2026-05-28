@@ -136,15 +136,22 @@ export default function LoginPage() {
     <main className={styles.root}>
       <div className={styles.card}>
 
-        {/* ── Panel izquierdo ── */}
-        <div className={styles.panelLeft}>
+         {/* ── Panel izquierdo ── */}
+<div 
+  className={`${styles.panelLeft} relative flex items-center justify-center p-4`} 
+  style={{ backgroundColor: "#f4f5f2" }} 
+>
   <Image
-    src="/logo.png"
-    alt="Farmacia Cristo Redentor"
-    fill
-  sizes="100vw"
-    style={{ objectFit: "cover", objectPosition: "center" }}
-    priority
+     src="/Logo.png"
+     alt="Farmacia Cristo Redentor"
+     fill
+     sizes="(max-width: 1024px) 100vw, 50vw"
+     style={{ 
+       objectFit: "contain", 
+       objectPosition: "center",
+       transform: "scale(1.5)" 
+     }}
+     priority
   />
 </div>
         {/* ── Panel derecho ── */}
@@ -215,20 +222,7 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* Recordar / Olvidé */}
-            <div className={styles.fieldRow}>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                />
-                Mantener sesión activa
-              </label>
-              <Link href="/recuperar-contrasena" className={styles.forgotLink}>
-                ¿Olvidaste tu contraseña?
-              </Link>
-            </div>
+           <br />
 
             {/* Submit */}
             <button

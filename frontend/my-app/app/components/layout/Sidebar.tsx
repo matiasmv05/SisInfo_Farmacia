@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "../../context/Authcontext";
 import { NAV_ITEMS } from "../../../routes/paths";
 
-export function Sidebar() {
+export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
@@ -26,7 +26,7 @@ export function Sidebar() {
         <nav className="flex-1 overflow-y-auto">
           <ul className="space-y-1">
             {NAV_ITEMS.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname.startsWith(item.href);
               return (
                 <li key={item.href}>
                   <Link

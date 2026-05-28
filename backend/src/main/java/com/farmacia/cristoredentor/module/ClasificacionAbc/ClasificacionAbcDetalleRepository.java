@@ -2,6 +2,7 @@ package com.farmacia.cristoredentor.module.ClasificacionAbc;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -49,4 +50,13 @@ List<ValorInventarioProductoDTO> calcularValorRotacionPorProducto(
 
     List<ClasificacionAbcDetalle> findByHistorialIdOrderByPorcentajeAcumuladoAsc(
         Integer historialId);
+
+    @Query("""
+    SELECT d FROM ClasificacionAbcDetalle d
+    WHERE d.producto.id = :productoId
+    ORDER BY d.historial.fechaCalculo DESC
+    LIMIT 1
+    """)
+Optional<ClasificacionAbcDetalle> findUltimoAbcByProducto(
+    @Param("productoId") Integer productoId);
 }

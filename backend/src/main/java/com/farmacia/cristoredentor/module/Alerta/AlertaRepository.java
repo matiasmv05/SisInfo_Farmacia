@@ -1,13 +1,18 @@
 package com.farmacia.cristoredentor.module.Alerta;
 
-import com.farmacia.cristoredentor.Entity.Alerta;
-import com.farmacia.cristoredentor.Enum.TipoAlerta;
-import org.springframework.data.domain.*;
-import org.springframework.data.jpa.repository.*;
+import java.time.OffsetDateTime;
+import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
+import com.farmacia.cristoredentor.Entity.Alerta;
+import com.farmacia.cristoredentor.Enum.TipoAlerta;
 
 @Repository
 public interface AlertaRepository extends JpaRepository<Alerta, Integer> {
@@ -30,4 +35,9 @@ public interface AlertaRepository extends JpaRepository<Alerta, Integer> {
 
     // Contar alertas activas por tipo (para el dashboard)
     Integer countByTipoAndLeidaFalse(TipoAlerta tipo);
+
+    // AlertaRepository.java — agregar:
+@Modifying
+@Query("UPDATE Alerta a SET a.leida = true, a.fechaLectura = :ahora WHERE a.lote.id = :loteId AND a.leida = false")
+void cerrarAlertasPorLote(@Param("loteId") Integer loteId, @Param("ahora") OffsetDateTime ahora);
 }

@@ -1,7 +1,6 @@
 package com.farmacia.cristoredentor.module.Proveedor;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,14 +22,15 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
 
     boolean existsByNombreIgnoreCaseAndIdNot(String nombre, Integer id);
 
-    @Query("""
-        SELECT p FROM Proveedor p
-        WHERE (:nombre IS NULL OR LOWER(p.nombre) LIKE LOWER(CONCAT('%', :nombre, '%')))
-          AND (:activo IS NULL OR p.activo = :activo)
-        """)
-    Page<Proveedor> buscarConFiltros(
-        @Param("nombre") String nombre,
-        @Param("activo") Boolean activo,
-        Pageable pageable
-    );
+   @Query(value = """
+    SELECT * FROM farmacia.proveedor p
+    WHERE (:nombre IS NULL OR LOWER(p.nombre) LIKE LOWER(CONCAT('%', :nombre, '%')))
+      AND (:activo IS NULL OR p.activo = :activo)
+    ORDER BY p.nombre
+    """, nativeQuery = true)
+Page<Proveedor> buscarConFiltros(
+    @Param("nombre") String nombre,
+    @Param("activo") Boolean activo,
+    Pageable pageable
+);
 }

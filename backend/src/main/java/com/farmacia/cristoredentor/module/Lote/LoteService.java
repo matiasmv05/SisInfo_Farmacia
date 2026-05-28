@@ -21,6 +21,7 @@ import com.farmacia.cristoredentor.Entity.Producto;
 import com.farmacia.cristoredentor.Enum.EstadoLote;
 import com.farmacia.cristoredentor.exceptions.BusinessException;
 import com.farmacia.cristoredentor.exceptions.ResourceNotFoundException;
+import com.farmacia.cristoredentor.module.Alerta.AlertaRepository;
 import com.farmacia.cristoredentor.module.Lote.dto.LoteDetalleDTO;
 import com.farmacia.cristoredentor.module.Lote.dto.LoteRequestDTO;
 import com.farmacia.cristoredentor.module.Lote.dto.ResultadoDesconteStock;
@@ -30,12 +31,14 @@ import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
 @Transactional
 public class LoteService {
 
+    private final AlertaRepository alertaRepository;
     private final LoteRepository loteRepo;
     private final ModelMapper modelMapper;
 
-    public LoteService(LoteRepository loteRepo, ModelMapper modelMapper) {
+    public LoteService(LoteRepository loteRepo, ModelMapper modelMapper, AlertaRepository alertaRepository) {
         this.loteRepo = loteRepo;
         this.modelMapper = modelMapper;
+        this.alertaRepository = alertaRepository;
     }
 
     // =========================================================================
@@ -219,6 +222,7 @@ public class LoteService {
 
     public LoteDetalleDTO marcarVencidoComoDTO(Integer loteId, String motivo) {
     ResultadoDesconteStock resultado = marcarVencido(loteId, motivo);
+    alertaRepository.cerrarAlertasPorLote(loteId, OffsetDateTime.now());
     return toDetalleDTO(resultado.getLote());
     }
     // =========================================================================

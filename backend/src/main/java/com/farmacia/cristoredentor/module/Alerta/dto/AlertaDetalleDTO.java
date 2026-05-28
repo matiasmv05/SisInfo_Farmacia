@@ -18,6 +18,9 @@ public class AlertaDetalleDTO {
     private String mensaje;
     private Integer productoId;
     private String productoNombre;
+    private String productoCategoria;
+    private Integer stockActual;
+    private Integer stockMinimo;
     private Integer loteId;
     private String loteNumero;
     private boolean leida;

@@ -2,6 +2,8 @@ package com.farmacia.cristoredentor.module.Producto.dto;
 
 import java.math.BigDecimal;
 
+import com.farmacia.cristoredentor.Enum.CategoriaProducto;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,7 +19,7 @@ public class ProductoDetalleDTO {
 
     private Integer id;
     private String nombre;
-    private String categoria;
+    private CategoriaProducto categoria;
     private String laboratorio;
     private String presentacion;
     private BigDecimal precioVenta;

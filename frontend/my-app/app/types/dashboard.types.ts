@@ -1,53 +1,51 @@
-// ── Alertas ──────────────────────────────────────────────────
-export type EstadoAlerta = "STOCK_CRÍTICO" | "VENCE < 15 DÍAS" | "STOCK BAJO";
+// app/types/dashboard.types.ts
 
-export interface AlertaInventario {
-  id: string;
-  sku: string;
-  nombre: string;
-  categoria: string;
-  stockActual: number;
-  estado: EstadoAlerta;
+// ─── Alertas (espejo de AlertaDetalleDTO del backend) ─────────────────────────
+export type CriticidadAlerta = "ALTA" | "MEDIA" | "BAJA";
+export type TipoAlerta =
+  | "stock_minimo"
+  | "vencimiento_rojo"
+  | "vencimiento_amarillo"
+  | "vencimiento_verde";
+
+export interface AlertaDetalleDTO {
+  id: number;
+  productoId: number;
+  productoNombre: string;
+  productoCategoria?: string;
+  tipo: TipoAlerta;
+  criticidad: CriticidadAlerta;
+  mensaje: string;
+  leida: boolean;
+  fechaCreacion: string;
+  stockActual?: number;
+  stockMinimo?: number;
+  loteId?: number;
+  loteNumero?: string;
 }
 
-// ── Métricas KPI ─────────────────────────────────────────────
-export interface KpiMetrica {
-  titulo: string;
-  valor: string | number;
-  subtitulo?: string;
-  detalle?: string;
-  icono: string;
+// ─── KPIs ─────────────────────────────────────────────────────────────────────
+export interface DashboardKpis {
+  alertasActivas: number;
+  alertasCriticas: number;       // criticidad ALTA
+  alertasMedias: number;         // criticidad MEDIA
+  porcentajeStockCritico: number;
+  porcentajeProximosVencer: number;
+  ordenesPendientes: number;
 }
 
-// ── Clasificación ABC ─────────────────────────────────────────
-export type ClaseABC = "A" | "B" | "C";
-
-export interface DistribucionABC {
-  clase: ClaseABC;
+// ─── Distribución ABC (derivada del último historial ABC) ─────────────────────
+export interface DistribucionAbcItem {
+  clase: "A" | "B" | "C";
   porcentajeInversion: number;
   porcentajeSkus: number;
-  color: string;
 }
 
-// ── Respuesta paginada genérica ───────────────────────────────
+// ─── Respuesta paginada genérica ──────────────────────────────────────────────
 export interface PaginatedResponse<T> {
   data: T[];
   page: number;
   limit: number;
   total: number;
-}
-
-export interface KPI {
-  title: string;
-  value: string;
-  subtitle?: string;
-  icon: string;
-}
-
-export interface InventoryAlert {
-  sku: string;
-  product: string;
-  category: string;
-  stock: number;
-  status: string;
+  totalElements?: number;
 }
