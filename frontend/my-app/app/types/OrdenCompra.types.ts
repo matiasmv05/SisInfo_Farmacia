@@ -1,8 +1,6 @@
 // app/types/OrdenCompra.types.ts
 
-/**
- * Mirrors backend EstadoOrden enum values exactly.
- */
+
 export type EstadoOrden =
   | "borrador"
   | "emitida"
@@ -10,9 +8,6 @@ export type EstadoOrden =
   | "recibida_parcial"
   | "cancelada";
 
-/**
- * Mirrors backend ordenCompraItemDto (response for each item).
- */
 export interface OrdenCompraItemDto {
   id: number;
   productoId: number;
@@ -22,9 +17,6 @@ export interface OrdenCompraItemDto {
   completo: boolean;
 }
 
-/**
- * Mirrors backend ordenCompraResponseDto (full order response).
- */
 export interface OrdenCompraResponseDto {
   id: number;
   proveedorId: number;

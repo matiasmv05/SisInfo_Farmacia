@@ -14,6 +14,8 @@ import lombok.Setter;
 @AllArgsConstructor
 
 public class usuarioRequestDto {
+
+    private Integer id;
     
     private String nombreCompleto;
     
@@ -24,6 +26,6 @@ public class usuarioRequestDto {
 
     private String rol;
 
-   
+    private boolean activo;
     
 }

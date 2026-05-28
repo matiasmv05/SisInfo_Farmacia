@@ -30,8 +30,6 @@ public interface usuarioRepository extends JpaRepository<Usuario, Integer> {
 
     Optional<Usuario> findFirstByRolAndActivoTrue(UserRole rol);
 
-    public Object findById(Long usuarioId);
-
-    public Object findByEmail(String usuarioEmail);
+    Optional<Usuario> findByEmail(String usuarioEmail);
 
 }

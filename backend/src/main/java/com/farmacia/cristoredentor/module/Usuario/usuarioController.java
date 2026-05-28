@@ -21,8 +21,6 @@ import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
 
 import jakarta.validation.Valid;
 
-  
-
 @RestController
 @RequestMapping("/api/usuarios")
 public class usuarioController {
@@ -53,22 +51,29 @@ public class usuarioController {
     // GET /api/usuarios
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
     @GetMapping
-public ResponseEntity<List<usuarioRequestDto>> listarActivos() {
-    return ResponseEntity.ok(service.listarActivos());
-}
+    public ResponseEntity<List<usuarioRequestDto>> listarActivos() {
+        return ResponseEntity.ok(service.listarActivos());
+    }
+
+    // GET /api/usuarios/todos — lista todos (activos e inactivos) para gestión
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @GetMapping("/todos")
+    public ResponseEntity<List<usuarioRequestDto>> listarTodos() {
+        return ResponseEntity.ok(service.listarTodos());
+    }
 
     // GET /api/usuarios/paginado?page=0&limit=20
-      @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
-      @GetMapping("/paginado")
-public ResponseEntity<PaginatedResponseDto<usuarioRequestDto>> listarActivosPaginado(
-        @RequestParam(defaultValue = "0") Integer page,
-        @RequestParam(defaultValue = "20") Integer limit) {
-    PaginatedResponseDto<usuarioRequestDto> resultado = service.listarActivosPaginado(page, limit);
-    
-    // Retornamos usando el constructor tradicional
-    return ResponseEntity.ok(resultado);
-    
-}
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
+    @GetMapping("/paginado")
+    public ResponseEntity<PaginatedResponseDto<usuarioRequestDto>> listarActivosPaginado(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer limit) {
+        PaginatedResponseDto<usuarioRequestDto> resultado = service.listarActivosPaginado(page, limit);
+
+        // Retornamos usando el constructor tradicional
+        return ResponseEntity.ok(resultado);
+
+    }
 
     // PUT /api/usuarios/{id}
     @PreAuthorize("hasRole('ADMINISTRADOR')")
@@ -85,6 +90,14 @@ public ResponseEntity<PaginatedResponseDto<usuarioRequestDto>> listarActivosPagi
     @PutMapping("/eliminar/{id}")
     public ResponseEntity<Void> desactivar(@PathVariable Integer id) {
         service.desactivarUsuario(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // put /api/usuarios/activar/{id}
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PutMapping("/activar/{id}")
+    public ResponseEntity<Void> dactivar(@PathVariable Integer id) {
+        service.activarUsuario(id);
         return ResponseEntity.noContent().build();
     }
 }

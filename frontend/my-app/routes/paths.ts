@@ -9,6 +9,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Clasificación ABC", href: "/clasificacion-abc", icon: "analytics" },
   { label: "Proveedores",       href: "/proveedores",       icon: "local_shipping" },
   { label: "Reportes",          href: "/reportes",          icon: "assessment" },
+  { label: "Usuarios",          href: "/usuarios",          icon: "group" },
   { label: "Configuración",     href: "/configuracion",     icon: "settings" },
 ];
 
@@ -24,6 +25,7 @@ export const ROUTES = {
   proveedores:      "/proveedores",
   crearProveedores: "/proveedores/crear",
   reportes:         "/reportes",
+  usuarios:         "/usuarios",
   configuracion:    "/configuracion",
   crearProveedor:   "/proveedor/crear"
 };

@@ -1,3 +1,5 @@
+@import './clinical_precision_system.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
