@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical Precision System - Demo Interactiva</title>
+    <!-- Vinculación del archivo del sistema de diseño -->
+    <link rel="stylesheet" href="clinical_precision_system.css">
+    <style>
+        /* Estilos específicos de presentación para la demo */
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--space-xl) var(--space-lg);
+        }
+
+        .demo-header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: var(--space-lg);
+            margin-bottom: var(--space-xl);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .demo-subtitle {
+            color: var(--text-secondary);
+            font-size: var(--text-lg);
+            margin-top: var(--space-xs);
+        }
+
+        .demo-section {
+            margin-bottom: var(--space-xxl);
+        }
+
+        .demo-section-title {
+            font-size: var(--text-2xl);
+            margin-bottom: var(--space-lg);
+            position: relative;
+            padding-left: var(--space-md);
+        }
+
+        .demo-section-title::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 15%;
+            height: 70%;
+            width: 4px;
+            background-color: var(--color-brand-500);
+            border-radius: var(--radius-full);
+        }
+
+        /* Cuadrícula de colores */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: var(--space-md);
+        }
+
+        .color-box {
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            background: var(--bg-surface);
+        }
+
+        .color-preview {
+            height: 120px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            padding: var(--space-sm);
+            color: #ffffff;
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            font-weight: var(--weight-bold);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+
+        .color-info {
+            padding: var(--space-md);
+        }
+
+        .color-name {
+            font-family: var(--font-heading);
+            font-weight: var(--weight-semibold);
+            font-size: var(--text-sm);
+            margin-bottom: 2px;
+        }
+
+        .color-var {
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+        }
+
+        /* Layout de Componentes */
+        .components-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: var(--space-lg);
+        }
+
+        /* Tema de colores de la demo */
+        .pill-theme-indicator {
+            padding: var(--space-xs) var(--space-md);
+            background-color: var(--bg-surface-secondary);
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            font-weight: var(--weight-semibold);
+            border: 1px solid var(--border-color);
+        }
+
+        /* Estilización de muestra de letra */
+        .font-specimen {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            background-color: var(--bg-surface);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="demo-container">
+
+        <!-- HEADER -->
+        <header class="demo-header">
+            <div>
+                <h1>Clinical Precision System</h1>
+                <p class="demo-subtitle">Farmacia Cristo Redentor • Sistema de Diseño de Interfaz</p>
+            </div>
+            <div class="pill-theme-indicator">
+                Detectando tema: Sistema Operativo
+            </div>
+        </header>
+
+        <!-- SECCIÓN 1: TIPOGRAFÍA (LETRA) -->
+        <section class="demo-section">
+            <h2 class="demo-section-title">1. Tipografía (Letra)</h2>
+            <div class="components-grid">
+                <!-- Outfit Specimen -->
+                <div class="font-specimen">
+                    <span class="c-badge c-badge--success u-mb-sm">Outfit - Fuente de Encabezados</span>
+                    <h1 style="font-size: var(--text-3xl); margin-bottom: var(--space-sm);">FARMACIA CRISTO REDENTOR
+                    </h1>
+                    <h2
+                        style="font-size: var(--text-2xl); font-weight: var(--weight-semibold); margin-bottom: var(--space-sm);">
+                        Inventario Médico</h2>
+                    <h3
+                        style="font-size: var(--text-xl); font-weight: var(--weight-medium); margin-bottom: var(--space-sm);">
+                        Gestión de Lotes FEFO</h3>
+                    <p class="u-mt-md"
+                        style="font-family: var(--font-heading); color: var(--text-secondary); font-size: var(--text-sm);">
+                        Diseñada para dar claridad geométrica, limpieza institucional y un impacto premium inmediato en
+                        paneles de control y títulos clínicos.
+                    </p>
+                </div>
+
+                <!-- Inter Specimen -->
+                <div class="font-specimen">
+                    <span class="c-badge c-badge--warning u-mb-sm">Inter - Fuente del Cuerpo</span>
+                    <p
+                        style="font-size: var(--text-lg); font-weight: var(--weight-semibold); margin-bottom: var(--space-sm);">
+                        Paracetamol 500mg • Comprimidos</p>
+                    <p style="font-size: var(--text-md); margin-bottom: var(--space-sm); color: var(--text-secondary);">
+                        El sistema utiliza la fuente 'Inter' para garantizar una legibilidad impecable en tablas
+                        complejas de datos, descripciones de medicamentos y reportes de auditoría.
+                    </p>
+                    <p style="font-size: var(--text-xs); color: var(--text-muted);">
+                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut
+                        labore et dolore magna aliqua.
+                    </p>
+                </div>
+
+                <!-- Monospace Specimen -->
+                <div class="font-specimen">
+                    <span class="c-badge c-badge--danger u-mb-sm">JetBrains Mono - Identificadores</span>
+                    <div class="u-mt-sm">
+                        <p style="margin-bottom: var(--space-xs);">Lote ID: <span class="c-code">LOT-2026-0528A</span>
+                        </p>
+                        <p style="margin-bottom: var(--space-xs);">Costo Unitario: <span class="c-code">$1,250.00
+                                ARS</span></p>
+                        <p>UUID Registro: <span class="c-code">f81d4fae-7dec-11d0-a765-00a0c91e6bf6</span></p>
+                    </div>
+                    <p class="u-mt-md" style="font-size: var(--text-xs); color: var(--text-secondary);">
+                        Utilizada en códigos, códigos de barras, IDs de lotes y montos monetarios precisos.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 2: PALETA DE COLORES (PINTURA) -->
+        <section class="demo-section">
+            <h2 class="demo-section-title">2. Paleta de Colores (Pintura)</h2>
+            <div class="color-grid">
+                <!-- Brand Primary -->
+                <div class="color-box">
+                    <div class="color-preview" style="background-color: var(--color-brand-500);">#0D9488</div>
+                    <div class="color-info">
+                        <div class="color-name">Teal Clínico Principal</div>
+                        <div class="color-var">--color-brand-500</div>
+                    </div>
+                </div>
+                <!-- Brand Dark -->
+                <div class="color-box">
+                    <div class="color-preview" style="background-color: var(--color-brand-700);">#115E59</div>
+                    <div class="color-info">
+                        <div class="color-name">Teal Oscuro / Hover</div>
+                        <div class="color-var">--color-brand-700</div>
+                    </div>
+                </div>
+                <!-- Accent Sky -->
+                <div class="color-box">
+                    <div class="color-preview" style="background-color: var(--color-accent-500);">#0284C7</div>
+                    <div class="color-info">
+                        <div class="color-name">Celeste de Acompañamiento</div>
+                        <div class="color-var">--color-accent-500</div>
+                    </div>
+                </div>
+                <!-- Success -->
+                <div class="color-box">
+                    <div class="color-preview" style="background-color: var(--color-success);">#10B981</div>
+                    <div class="color-info">
+                        <div class="color-name">Éxito / Stock Óptimo</div>
+                        <div class="color-var">--color-success</div>
+                    </div>
+                </div>
+                <!-- Warning -->
+                <div class="color-box">
+                    <div class="color-preview" style="background-color: var(--color-warning);">#F59E0B</div>
+                    <div class="color-info">
+                        <div class="color-name">Advertencia / Vence Pronto</div>
+                        <div class="color-var">--color-warning</div>
+                    </div>
+                </div>
+                <!-- Danger -->
+                <div class="color-box">
+                    <div class="color-preview" style="background-color: var(--color-danger);">#EF4444</div>
+                    <div class="color-info">
+                        <div class="color-name">Peligro / Vencido / Crítico</div>
+                        <div class="color-var">--color-danger</div>
+                    </div>
+                </div>
+                <!-- Neutral Dark Slate -->
+                <div class="color-box">
+                    <div class="color-preview" style="background-color: var(--color-neutral-800);">#1E293B</div>
+                    <div class="color-info">
+                        <div class="color-name">Slate Neutro Oscuro</div>
+                        <div class="color-var">--color-neutral-800</div>
+                    </div>
+                </div>
+                <!-- Neutral Light Slate -->
+                <div class="color-box">
+                    <div class="color-preview" style="background-color: var(--color-neutral-100);">#F1F5F9</div>
+                    <div class="color-info">
+                        <div class="color-name">Slate Neutro Claro</div>
+                        <div class="color-var">--color-neutral-100</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 3: COMPONENTES DE INTERFAZ -->
+        <section class="demo-section">
+            <h2 class="demo-section-title">3. Componentes Clínicos Premium</h2>
+
+            <div class="components-grid u-mb-xl">
+                <!-- Tarjeta Estándar -->
+                <div class="c-card c-card--interactive">
+                    <h3>Tarjeta de Producto</h3>
+                    <p class="u-mt-sm" style="color: var(--text-secondary);">
+                        Esta tarjeta estándar responde con una elevación suave y un brillo de color verde azulado en su
+                        borde al pasar el cursor (hover effect).
+                    </p>
+                    <div class="u-mt-md u-flex u-items-center u-justify-between">
+                        <span>Stock: <strong>140 u.</strong></span>
+                        <button class="c-btn c-btn--primary">Ver Detalle</button>
+                    </div>
+                </div>
+
+                <!-- Tarjeta Glassmorphic -->
+                <div class="c-card--glass"
+                    style="display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <h3>Diseño de Vidrio (Glass)</h3>
+                        <p class="u-mt-sm" style="color: var(--text-secondary);">
+                            Perfecto para paneles flotantes, filtros y dashboards modernos que superponen contenido
+                            sobre fondos con sutiles degradados.
+                        </p>
+                    </div>
+                    <div class="u-mt-md u-flex u-gap-sm">
+                        <span class="c-badge c-badge--success">Estable</span>
+                        <span class="c-badge c-badge--warning">Revisar</span>
+                    </div>
+                </div>
+
+                <!-- Grupo de Botones y Estados -->
+                <div class="c-card">
+                    <h3>Controles de Acción</h3>
+                    <p class="u-mt-sm" style="color: var(--text-secondary); margin-bottom: var(--space-md);">
+                        Botones interactivos limpios con tipografía 'Outfit' y retroalimentación interactiva suave.
+                    </p>
+                    <div class="u-flex u-flex-col u-gap-sm">
+                        <button class="c-btn c-btn--primary">
+                            <span>Guardar Cambios</span>
+                        </button>
+                        <button class="c-btn c-btn--secondary">
+                            <span>Cancelar Operación</span>
+                        </button>
+                        <button class="c-btn c-btn--danger">
+                            <span>Baja de Lote Vencido</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla Compleja de Lotes -->
+            <h3 class="u-mb-md">Tabla de Inventario de Lotes (Estilo Clínico)</h3>
+            <div class="c-table-container">
+                <table class="c-table">
+                    <thead>
+                        <tr>
+                            <th>Código Lote</th>
+                            <th>Producto</th>
+                            <th>Costo Unitario</th>
+                            <th>Cantidad</th>
+                            <th>Fecha Vencimiento</th>
+                            <th>Estado de Alerta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="c-code">LOT-84729</span></td>
+                            <td>Ibuprofeno 400mg (Caja x 20)</td>
+                            <td>$1,540.00</td>
+                            <td>120</td>
+                            <td>12 Nov 2028</td>
+                            <td><span class="c-badge c-badge--success">Óptimo</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="c-code">LOT-29471</span></td>
+                            <td>Amoxicilina 500mg (Caja x 16)</td>
+                            <td>$3,210.00</td>
+                            <td>15</td>
+                            <td>15 Jun 2026</td>
+                            <td><span class="c-badge c-badge--warning">Próximo Vencer</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="c-code">LOT-10294</span></td>
+                            <td>Loratadina 10mg (Caja x 10)</td>
+                            <td>$980.00</td>
+                            <td>0</td>
+                            <td>10 Abr 2026</td>
+                            <td><span class="c-badge c-badge--danger">Vencido / Agotado</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="c-code">LOT-58291</span></td>
+                            <td>Losartán 50mg (Caja x 30)</td>
+                            <td>$2,100.00</td>
+                            <td>85</td>
+                            <td>28 Ene 2029</td>
+                            <td><span class="c-badge c-badge--success">Óptimo</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+
+</body>
+
+</html>
