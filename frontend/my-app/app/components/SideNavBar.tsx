@@ -87,10 +87,10 @@ export const SideNavBar: React.FC = () => {
           active={pathname === "/clasificacion-abc" || pathname === "/"}
         />
         <NavItem
-          href="/proveedores"
+          href="/proveedores/nuevo"
           icon="local_shipping"
           label="Proveedores"
-          active={pathname === "/proveedores"}
+          active={pathname.startsWith("/proveedores")}
         />
         <NavItem
           href="/orden-compra"
