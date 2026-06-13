@@ -2,12 +2,16 @@ package com.farmacia.cristoredentor.module.Categoria;
 
 import java.util.List;
 
+<<<<<<< HEAD
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+=======
+import org.springframework.stereotype.Service;
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
 
 import com.farmacia.cristoredentor.Entity.Categoria;
 import com.farmacia.cristoredentor.module.Categoria.dto.CategoriaCreateDTO;
@@ -21,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class CategoriaService {
 
     private final CategoriaRepository repository;
+<<<<<<< HEAD
     private final ModelMapper modelMapper;
 
     // Método para crear una nueva categoría
@@ -66,15 +71,67 @@ public class CategoriaService {
  
     // Método para obtener una categoría por su ID
     public CategoriaResponseDTO getById_Request(Integer id) {
+=======
+
+    
+    public CategoriaResponseDTO create(CategoriaCreateDTO dto) {
+
+        Categoria categoria = Categoria.builder()
+                .nombre(dto.getNombre())
+                .descripcion(dto.getDescripcion())
+                .activo(true)
+                .build();
+
+        repository.save(categoria);
+
+        return CategoriaResponseDTO.builder()
+                .id(categoria.getId())
+                .nombre(categoria.getNombre())
+                .descripcion(categoria.getDescripcion())
+                .activo(categoria.isActivo())
+                .build();
+    }
+
+    
+    public List<CategoriaResponseDTO> listar() {
+
+        List<Categoria> categorias = repository.findAll();
+
+        return categorias.stream()
+                .map(categoria -> CategoriaResponseDTO.builder()
+                        .id(categoria.getId())
+                        .nombre(categoria.getNombre())
+                        .descripcion(categoria.getDescripcion())
+                        .activo(categoria.isActivo())
+                        .build())
+                .toList();
+    }
+
+        
+    public CategoriaResponseDTO getById(Long id) {
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
 
         Categoria categoria = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
 
+<<<<<<< HEAD
         return modelMapper.map(categoria, CategoriaResponseDTO.class);
     }
 
     // Método para actualizar una categoría existente
     public CategoriaResponseDTO update(Integer id, CategoriaCreateDTO dto) {
+=======
+        return CategoriaResponseDTO.builder()
+                .id(categoria.getId())
+                .nombre(categoria.getNombre())
+                .descripcion(categoria.getDescripcion())
+                .activo(categoria.isActivo())
+                .build();
+    }
+
+   
+    public CategoriaResponseDTO update(Long id, CategoriaCreateDTO dto) {
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
 
         Categoria categoria = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
@@ -84,6 +141,7 @@ public class CategoriaService {
 
         repository.save(categoria);
 
+<<<<<<< HEAD
         return modelMapper.map(categoria, CategoriaResponseDTO.class);
                 
     }
@@ -108,4 +166,22 @@ public class CategoriaService {
         categoria.setActivo(true);
         repository.save(categoria);
     }
+=======
+        return CategoriaResponseDTO.builder()
+                .id(categoria.getId())
+                .nombre(categoria.getNombre())
+                .descripcion(categoria.getDescripcion())
+                .activo(categoria.isActivo())
+                .build();
+    }
+
+    public void desactivarCategoria(Long id) {
+
+        Categoria categoria = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
+
+        categoria.setActivo(false);
+        repository.save(categoria);
+    }
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
 }

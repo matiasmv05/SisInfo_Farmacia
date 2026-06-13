@@ -1,7 +1,19 @@
 package com.farmacia.cristoredentor.module.Proveedor;
 
-import java.util.List;
+<<<<<<< HEAD
+=======
+import com.farmacia.cristoredentor.module.Proveedor.dto.*;
+import com.farmacia.cristoredentor.Entity.Proveedor;
+import com.farmacia.cristoredentor.module.Proveedor.ProveedorRepository;
+import com.farmacia.cristoredentor.module.Proveedor.ProveedorService;
 
+import org.springframework.stereotype.Service;
+
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
+import java.util.List;
+import java.util.stream.Collectors;
+
+<<<<<<< HEAD
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -36,10 +48,28 @@ public class ProveedorService {
                 .contactoNombre(dto.getContactoNombre())
                 .telefono(dto.getTelefono())
                 .correo(dto.getCorreo())
+=======
+@Service
+public class ProveedorService {
+    private final ProveedorRepository repository;
+
+    public ProveedorService(ProveedorRepository repository) {
+        this.repository = repository;
+    }
+
+    
+    public ProveedorResponseDTO crear(ProveedorCreateDTO dto){
+        Proveedor proveedor = Proveedor.builder()
+                .nombre(dto.getNombre())
+                .contactoNombre(dto.getContactoNombre())
+                .telefono(dto.getTelefono())
+                .email(dto.getEmail())
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
                 .direccion(dto.getDireccion())
                 .activo(true)
                 .build();
 
+<<<<<<< HEAD
         return toResponseDTO(proveedorRepository.save(proveedor));
     }
 
@@ -118,6 +148,61 @@ public class ProveedorService {
         throw new ResourceNotFoundException("Proveedor no encontrado o inactivo: " + id);
     }
     return proveedor;
+=======
+        repository.save(proveedor);
+        return convertirResponse(proveedor);
+    }
+
+    
+    public List<ProveedorResponseDTO> listar() {
+        return repository.findAll().stream()
+                .map(this::convertirResponse)
+                .collect(Collectors.toList());
+    }
+
+    
+    public ProveedorResponseDTO obtenerPorId(Long id) {
+        Proveedor proveedor = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Proveedor no encontrado"));
+        return convertirResponse(proveedor);
+    }
+
+    
+    public ProveedorResponseDTO actualizar(Long id, ProveedorUpdateDTO dto) {
+        Proveedor proveedor = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Proveedor no encontrado"));
+
+        proveedor.setNombre(dto.getNombre());
+        proveedor.setContactoNombre(dto.getContactoNombre());
+        proveedor.setTelefono(dto.getTelefono());
+        proveedor.setEmail(dto.getEmail());
+        proveedor.setDireccion(dto.getDireccion());
+        proveedor.setActivo(dto.isActivo());
+
+        repository.save(proveedor);
+        return convertirResponse(proveedor);
+    }
+
+    
+    public void eliminar(Long id) {
+        Proveedor proveedor = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Proveedor no encontrado"));
+        proveedor.setActivo(false);
+        repository.save(proveedor);
+    }
+
+    private ProveedorResponseDTO convertirResponse(Proveedor proveedor) {
+        return ProveedorResponseDTO.builder()
+                .id(proveedor.getId())
+                .nombre(proveedor.getNombre())
+                .contactoNombre(proveedor.getContactoNombre())
+                .telefono(proveedor.getTelefono())
+                .email(proveedor.getEmail())
+                .direccion(proveedor.getDireccion())
+                .activo(proveedor.isActivo())
+                .build();
+    }
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
 }
 
     private ProveedorResponseDTO toResponseDTO(Proveedor p) {

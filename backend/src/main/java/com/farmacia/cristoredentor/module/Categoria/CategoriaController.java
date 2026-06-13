@@ -14,8 +14,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+<<<<<<< HEAD
+=======
+import com.farmacia.cristoredentor.Entity.Usuario;
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
 import com.farmacia.cristoredentor.module.Categoria.dto.CategoriaCreateDTO;
 import com.farmacia.cristoredentor.module.Categoria.dto.CategoriaResponseDTO;
+import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
 
 
 @RestController
@@ -38,6 +43,7 @@ public class CategoriaController {
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
     @GetMapping
     public ResponseEntity<List<CategoriaResponseDTO>> listar() {
+    
         return ResponseEntity.ok(service.listar());
     }
 
@@ -68,11 +74,14 @@ public class CategoriaController {
         return ResponseEntity.ok(service.update(id, dto));
     }
 
+<<<<<<< HEAD
     // DELETE api/categorias/{id}
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
 
+=======
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
         service.desactivarCategoria(id);
 
         return ResponseEntity.noContent().build();

@@ -1,6 +1,7 @@
 package com.farmacia.cristoredentor.Entity;
 
 import java.math.BigDecimal;
+<<<<<<< HEAD
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
@@ -18,6 +19,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+=======
+import java.time.Instant;
+import java.time.LocalDate;
+
+import jakarta.persistence.*;
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -31,11 +38,15 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+<<<<<<< HEAD
 
+=======
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
 public class Lote {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+<<<<<<< HEAD
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -48,10 +59,24 @@ public class Lote {
     @Column(nullable = false)
     @Builder.Default
     private Integer cantidad = 0;
+=======
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "producto_id", nullable = false)
+    private Producto producto;
+
+    @Column(name = "numero_lote", nullable = false)
+    private String numeroLote;
+
+    @Column(name = "cantidad", nullable = false)
+    private Integer cantidad;
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
 
     @Column(name = "fecha_vencimiento", nullable = false)
     private LocalDate fechaVencimiento;
 
+<<<<<<< HEAD
     @Column(name = "costo_unitario", nullable = false, precision = 10, scale = 2)
     private BigDecimal costoUnitario;
 
@@ -77,4 +102,24 @@ public class Lote {
     protected void onCreate() {
     this.fechaRegistro = OffsetDateTime.now();
 }
+=======
+    @Column(name = "costo_unitario", nullable = false)
+    private BigDecimal costoUnitario;
+
+    @Column(name = "estado", nullable = false)
+    private String estado;
+
+    @ManyToOne
+    @JoinColumn(name = "orden_compra_id")
+    private OrdenCompra ordenCompra;
+
+    @Column(name = "fecha_registro", nullable = false, insertable = false, updatable = false)
+    private Instant fechaRegistro;
+
+    @Column(name = "fecha_baja")
+    private Instant fechaBaja;
+
+    @Column(name = "motivo_baja")
+    private String motivoBaja;
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087
 }

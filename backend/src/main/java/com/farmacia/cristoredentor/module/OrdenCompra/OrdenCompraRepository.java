@@ -1,5 +1,6 @@
 package com.farmacia.cristoredentor.module.OrdenCompra;
 
+<<<<<<< HEAD
 import java.util.List;
 import java.util.Optional;
 
@@ -34,3 +35,12 @@ public interface OrdenCompraRepository extends JpaRepository<OrdenCompra, Intege
 
     
 }
+=======
+import com.farmacia.cristoredentor.Entity.OrdenCompra;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface OrdenCompraRepository extends JpaRepository<OrdenCompra, Long> {
+}
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087

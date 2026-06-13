@@ -1,5 +1,6 @@
 package com.farmacia.cristoredentor.module.RecepcionMercaderia;
 
+<<<<<<< HEAD
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -26,3 +27,12 @@ public interface RecepcionMercaderiaRepository extends JpaRepository<RecepcionMe
         """)
     Optional<RecepcionMercaderia> findByIdConDetalles(@Param("id") Integer id);
 }
+=======
+import com.farmacia.cristoredentor.Entity.RecepcionMercaderia;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface RecepcionMercaderiaRepository extends JpaRepository<RecepcionMercaderia, Long> {
+}
+>>>>>>> d3f8533c188aaa31d47a986ef4f0881f31e04087

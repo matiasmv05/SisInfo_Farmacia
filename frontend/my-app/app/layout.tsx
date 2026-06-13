@@ -12,6 +12,7 @@ export default function RootLayout({
     <html lang="es" className="light">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
+
         <link
           rel="preconnect"
           href="https://fonts.gstatic.com"
