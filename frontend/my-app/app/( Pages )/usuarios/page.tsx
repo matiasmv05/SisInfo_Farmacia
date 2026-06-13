@@ -191,11 +191,6 @@ function UsuariosPageContent() {
                     <td className="px-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-1 h-10 rounded-full absolute left-0 hidden group-hover:block ${u.activo ? 'bg-secondary' : 'bg-error'}`}></div>
-                        <img 
-                          alt={u.nombreCompleto} 
-                          className={`w-8 h-8 rounded-full border border-outline-variant object-cover ${!u.activo ? 'grayscale opacity-70' : ''}`}
-                          src={DEFAULT_AVATAR}
-                        />
                         <div>
                           <p className={`font-body-md font-medium ${u.activo ? 'text-on-surface' : 'text-on-surface/70'}`}>
                             {u.nombreCompleto}

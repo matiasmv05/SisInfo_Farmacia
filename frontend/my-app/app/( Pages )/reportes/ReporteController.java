@@ -1,5 +1,4 @@
-public
-package com.farmacia.cristoredentor.module.Reporte;
+package com.farmacia.cristoredentor.module.reportes;
 
 import java.time.LocalDate;
 import java.util.List;
