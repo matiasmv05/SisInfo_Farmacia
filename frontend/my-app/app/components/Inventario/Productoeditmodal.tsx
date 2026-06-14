@@ -47,7 +47,7 @@ interface FormState {
 function toForm(p: ProductoDetalle): FormState {
   return {
     nombre:           p.nombre ?? '',
-    categoria:        p.categoria ?? '',
+    categoria:        (p.categoria as CategoriaProducto | '') ?? '',
     laboratorio:      p.laboratorio ?? '',
     concentracion:    p.concentracion ?? '',
     presentacion:     p.presentacion ?? '',

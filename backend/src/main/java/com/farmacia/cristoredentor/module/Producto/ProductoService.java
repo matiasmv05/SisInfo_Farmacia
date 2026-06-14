@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.farmacia.cristoredentor.Entity.Producto;
 import com.farmacia.cristoredentor.Enum.CategoriaProducto;
+import com.farmacia.cristoredentor.Enum.ClasificacionABC;
 import com.farmacia.cristoredentor.exceptions.BusinessException;
 import com.farmacia.cristoredentor.exceptions.ResourceNotFoundException;
 import com.farmacia.cristoredentor.module.ClasificacionAbc.ClasificacionAbcDetalleRepository;
@@ -84,10 +85,14 @@ public class ProductoService {
 
     @Transactional(readOnly = true)
 public PaginatedResponseDto<ProductoDetalleDTO> listarFiltrado(
-        Integer page, Integer limit, String nombre, CategoriaProducto categoria) {
+        Integer page,
+        Integer limit,
+        String nombre,
+        CategoriaProducto categoria,
+        ClasificacionABC clasificacionAbc) {
 
     Pageable pageable = PageRequest.of(page, limit, Sort.by("nombre").ascending());
-    Page<Producto> resultado = productoRepo.findByFiltros(nombre, categoria, pageable);
+    Page<Producto> resultado = productoRepo.findByFiltros(nombre, categoria, clasificacionAbc, pageable);
 
     List<ProductoDetalleDTO> data = resultado.getContent()
         .stream()

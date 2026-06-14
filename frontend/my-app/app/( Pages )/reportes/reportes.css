@@ -227,3 +227,7 @@
 .toast--success {
   border-left-color: var(--color-success);
 }
+
+.toast--error {
+  border-left-color: var(--color-danger);
+}

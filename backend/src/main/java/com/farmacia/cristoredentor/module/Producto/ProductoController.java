@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.farmacia.cristoredentor.Enum.CategoriaProducto;
+import com.farmacia.cristoredentor.Enum.ClasificacionABC;
 import com.farmacia.cristoredentor.module.Producto.dto.ProductoDetalleDTO;
 import com.farmacia.cristoredentor.module.Producto.dto.ProductoRequestDTO;
 import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
@@ -53,8 +54,9 @@ public ResponseEntity<PaginatedResponseDto<ProductoDetalleDTO>> listar(
         @RequestParam(defaultValue = "0")  Integer page,
         @RequestParam(defaultValue = "20") Integer limit,
         @RequestParam(required = false)    String nombre,
-        @RequestParam(required = false)    CategoriaProducto categoria) {
-    return ResponseEntity.ok(service.listarFiltrado(page, limit, nombre, categoria));
+        @RequestParam(required = false)    CategoriaProducto categoria,
+        @RequestParam(required = false)    ClasificacionABC clasificacionAbc) {
+    return ResponseEntity.ok(service.listarFiltrado(page, limit, nombre, categoria, clasificacionAbc));
 }
 
     // GET /api/productos/stock-critico?page=0&limit=20

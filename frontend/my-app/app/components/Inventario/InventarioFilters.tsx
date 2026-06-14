@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useInventario } from "../../context/InventarioContext";
-import { ClaseAbc } from "../../types/Inventario.types";
+import { CategoriaProducto, ClaseAbc } from "../../types/Inventario.types";
 
 const CATEGORIAS = [
   { value: "ANTIBIOTICOS", label: "Antibióticos" },
@@ -64,7 +64,7 @@ export const InventarioFilters: React.FC = () => {
         <div className="relative">
           <select
             value={selectedCategoria}
-            onChange={(e) => setSelectedCategoria(e.target.value)}
+            onChange={(e) => setSelectedCategoria(e.target.value as CategoriaProducto | '')}
             className="appearance-none w-full md:w-48 pl-3 pr-8 py-2.5 bg-surface-container-low border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary/30 focus:outline-none font-body-md text-body-md text-on-surface transition-all cursor-pointer"
           >
             <option value="">Categoría</option>

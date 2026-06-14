@@ -57,6 +57,19 @@ List<ValorInventarioProductoDTO> calcularValorRotacionPorProducto(
     ORDER BY d.historial.fechaCalculo DESC
     LIMIT 1
     """)
-Optional<ClasificacionAbcDetalle> findUltimoAbcByProducto(
-    @Param("productoId") Integer productoId);
+    Optional<ClasificacionAbcDetalle> findUltimoAbcByProducto(
+        @Param("productoId") Integer productoId);
+
+    @Query(value = """
+        SELECT 
+            p.id as productoId,
+            COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' THEN m.cantidad ELSE 0 END), 0) as totalVendidas,
+            COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' THEN m.cantidad * (p.precio_venta - m.costo_unitario) ELSE 0 END), 0) as gananciaTotal,
+            COUNT(m.id) as circulacion
+        FROM farmacia.producto p
+        LEFT JOIN farmacia.movimiento_inventario m ON p.id = m.producto_id
+        WHERE p.activo = true
+        GROUP BY p.id
+        """, nativeQuery = true)
+    List<com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ProductoABCStats> obtenerStatsParaABC();
 }

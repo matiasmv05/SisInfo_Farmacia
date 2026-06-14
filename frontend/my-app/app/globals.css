@@ -1,16 +1,44 @@
 @import './clinical_precision_system.css';
+@import 'tailwindcss';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --color-background: var(--bg-page);
+  --color-surface: var(--bg-surface);
+  --color-surface-container-lowest: var(--bg-surface);
+  --color-surface-container-low: var(--bg-surface-secondary);
+  --color-surface-container: var(--bg-surface-secondary);
+  --color-surface-container-high: var(--bg-surface-tertiary);
+  --color-surface-container-highest: var(--bg-surface-tertiary);
+  --color-on-surface: var(--text-primary);
+  --color-on-surface-variant: var(--text-secondary);
+  --color-on-background: var(--text-primary);
+  --color-outline: var(--border-color);
+  --color-outline-variant: var(--border-color);
+  --color-primary: var(--color-brand-500);
+  --color-primary-container: var(--color-brand-100);
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: var(--color-brand-900);
+  --color-secondary: var(--color-success);
+  --color-secondary-container: var(--color-success-bg);
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: var(--color-success);
+  --color-tertiary: var(--color-accent-500);
+  --color-tertiary-container: var(--color-info-bg);
+  --color-on-tertiary: #ffffff;
+  --color-error: var(--color-danger);
+  --color-error-container: var(--color-danger-bg);
+  --color-on-error: #ffffff;
+}
 
 html {
   font-family: "Inter", sans-serif;
+  color-scheme: light;
 }
 
 body {
-  background-color: #f8f9fa;
-  color: #191c1d;
+  min-height: 100vh;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
 }
 
 .material-symbols-outlined {

@@ -5,7 +5,7 @@ import React, {
   createContext, useContext, useState,
   useEffect, useCallback, useRef,
 } from "react";
-import { ProductoDetalle, StockStatus, CategoriaProducto } from "../types/Inventario.types";
+import { ProductoDetalle, StockStatus, CategoriaProducto, ClaseAbc } from "../types/Inventario.types";
 import {
   fetchProductosApi,
   createProductoApi,
@@ -29,6 +29,8 @@ interface InventarioContextType {
   setSearchQuery: (q: string) => void;
   selectedCategoria: CategoriaProducto | '';
   setSelectedCategoria: (c: CategoriaProducto | '') => void;
+  selectedClaseAbc: ClaseAbc | 'ALL';
+  setSelectedClaseAbc: (c: ClaseAbc | 'ALL') => void;
   currentPage: number;
   setCurrentPage: (p: number) => void;
   itemsPerPage: number;
@@ -55,6 +57,7 @@ export const InventarioProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const [searchQuery, setSearchQueryRaw]             = useState('');
   const [selectedCategoria, setSelectedCategoriaRaw] = useState<CategoriaProducto | ''>('');
+  const [selectedClaseAbc, setSelectedClaseAbcRaw]   = useState<ClaseAbc | 'ALL'>('ALL');
   const [currentPage, setCurrentPageRaw]             = useState(1);
   const itemsPerPage = 20;
 
@@ -72,6 +75,11 @@ export const InventarioProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setCurrentPageRaw(1);
   }, []);
 
+  const setSelectedClaseAbc = useCallback((c: ClaseAbc | 'ALL') => {
+    setSelectedClaseAbcRaw(c);
+    setCurrentPageRaw(1);
+  }, []);
+
   const setCurrentPage = useCallback((p: number) => setCurrentPageRaw(p), []);
 
   const loadData = useCallback(async () => {
@@ -83,6 +91,7 @@ export const InventarioProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         limit: itemsPerPage,
         nombre: debouncedSearch || undefined,
         categoria: selectedCategoria || undefined,
+        clasificacionAbc: selectedClaseAbc === 'ALL' ? undefined : selectedClaseAbc,
       });
       setItems(res.data);
       setTotalItems(res.totalElements); 
@@ -91,7 +100,7 @@ export const InventarioProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, debouncedSearch, selectedCategoria]);
+  }, [currentPage, itemsPerPage, debouncedSearch, selectedCategoria, selectedClaseAbc]);
 
   useEffect(() => { loadData(); }, [loadData]);
   useEffect(() => { setCurrentPageRaw(1); }, [debouncedSearch, selectedCategoria]);
@@ -189,6 +198,7 @@ const updateProduct = useCallback(async (id: number, payload: Partial<ProductoDe
       items, loading, creating, error,
       searchQuery, setSearchQuery,
       selectedCategoria, setSelectedCategoria,
+      selectedClaseAbc, setSelectedClaseAbc,
       currentPage, setCurrentPage,
       itemsPerPage, totalItems,
       isModalOpen, openModal, closeModal,
