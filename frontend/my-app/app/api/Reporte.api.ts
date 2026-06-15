@@ -1,6 +1,6 @@
 // app/api/Reporte.api.ts
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8082';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 function getAuthHeaders(): HeadersInit {
   const token =

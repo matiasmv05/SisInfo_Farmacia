@@ -33,7 +33,7 @@ export interface RegisterPayload {
 
 export async function registerApi(payload: RegisterPayload): Promise<void> {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`,
+    `${API_BASE}/api/auth/register`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
