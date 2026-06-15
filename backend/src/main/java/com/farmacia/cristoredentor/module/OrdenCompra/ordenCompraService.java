@@ -3,7 +3,9 @@ package com.farmacia.cristoredentor.module.OrdenCompra;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -72,7 +74,8 @@ public class ordenCompraService {
 
         for (ordenCompraItemRequestDto item : dto.getItems()) {
             Producto producto = buscarProductoActivo(item.getProductoId());
-            agregarDetalleAOrden(orden, producto, item.getCantidadSolicitada(), item.getCostoUnitario());
+            BigDecimal costo = item.getCostoUnitario() != null ? item.getCostoUnitario() : producto.getPrecioCosto();
+            agregarDetalleAOrden(orden, producto, item.getCantidadSolicitada(), costo);
         }
 
         recalcularMontoTotal(orden);
@@ -95,7 +98,8 @@ public class ordenCompraService {
         }
 
         Producto producto = buscarProductoActivo(dto.getProductoId());
-        agregarDetalleAOrden(orden, producto, dto.getCantidadSolicitada(), dto.getCostoUnitario());
+        BigDecimal costo = dto.getCostoUnitario() != null ? dto.getCostoUnitario() : producto.getPrecioCosto();
+        agregarDetalleAOrden(orden, producto, dto.getCantidadSolicitada(), costo);
         recalcularMontoTotal(orden);
         return toResponseDto(ordenRepo.save(orden));
     }
@@ -154,11 +158,17 @@ public class ordenCompraService {
                 "No se puede emitir la orden id=" + id + ": no tiene ítems.");
         }
 
-        boolean haySinCosto = orden.getDetalles().stream()
-            .anyMatch(d -> d.getCostoUnitario() == null);
-        if (haySinCosto) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                "No se puede emitir la orden id=" + id + ": hay ítems sin costo unitario.");
+        for (OrdenCompraDetalle d : orden.getDetalles()) {
+            Producto p = d.getProducto();
+            if (d.getCostoUnitario() == null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede emitir la orden id=" + id + ": hay ítems sin costo unitario.");
+            }
+            if (p.getStockMaximo() != null && p.getStockTotal() + d.getCantidadSolicitada() > p.getStockMaximo()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    String.format("No se puede emitir. El producto %s superaría su stock máximo de %d (Actual: %d, Solicitado: %d).",
+                        p.getNombre(), p.getStockMaximo(), p.getStockTotal(), d.getCantidadSolicitada()));
+            }
         }
 
         orden.setEstado(EstadoOrden.emitida);
@@ -191,12 +201,33 @@ public class ordenCompraService {
             String estadoParam, Integer page, Integer limit) {
 
         Pageable pageable = PageRequest.of(page, limit, Sort.by("createdAt").descending());
+        Page<OrdenCompra> resultado;
 
-        Page<OrdenCompra> resultado = (estadoParam != null && !estadoParam.isBlank())
-            ? ordenRepo.findByEstado(parsearEstado(estadoParam), pageable)
-            : ordenRepo.findAll(pageable);
+        if (estadoParam != null && !estadoParam.isBlank()) {
+            if (estadoParam.contains(",")) {
+                List<EstadoOrden> estados = Arrays.stream(estadoParam.split(","))
+                    .map(String::trim)
+                    .map(this::parsearEstado)
+                    .collect(Collectors.toList());
+                resultado = ordenRepo.findByEstadoIn(estados, pageable);
+            } else {
+                resultado = ordenRepo.findByEstado(parsearEstado(estadoParam.trim()), pageable);
+            }
+        } else {
+            resultado = ordenRepo.findAll(pageable);
+        }
 
         return toPaginatedDto(resultado, page, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Long> obtenerStockEnTransito(Integer productoId) {
+        List<EstadoOrden> estados = Arrays.asList(EstadoOrden.emitida, EstadoOrden.recibida_parcial);
+        Long enTransito = ordenRepo.sumarStockEnTransitoPorProducto(productoId, estados);
+        
+        java.util.Map<String, Long> response = new java.util.HashMap<>();
+        response.put("stockEnTransito", enTransito != null ? enTransito : 0L);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -234,6 +265,14 @@ public class ordenCompraService {
     // Sin esto, mappedBy no persiste la FK y Hibernate inserta con orden_compra_id = NULL.
     private void agregarDetalleAOrden(OrdenCompra orden, Producto producto,
                                       Integer cantidad, BigDecimal costo) {
+        if (producto.getStockMaximo() != null) {
+            if (producto.getStockTotal() + cantidad > producto.getStockMaximo()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    String.format("El producto %s superaría su stock máximo de %d (Actual: %d, Solicitado: %d).",
+                        producto.getNombre(), producto.getStockMaximo(), producto.getStockTotal(), cantidad));
+            }
+        }
+
         OrdenCompraDetalle detalle = OrdenCompraDetalle.builder()
             .ordenCompra(orden)
             .producto(producto)

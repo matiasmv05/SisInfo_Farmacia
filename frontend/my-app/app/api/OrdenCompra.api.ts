@@ -85,3 +85,19 @@ export async function cancelarOrdenApi(
   if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
   return res.json();
 }
+
+// ─── GET /api/ordenes-compra/producto/{productoId}/en-transito ───────────────
+// Retorna la cantidad de unidades pedidas que aún no llegaron al almacén
+export async function fetchStockEnTransitoApi(productoId: number): Promise<number> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/api/ordenes-compra/producto/${productoId}/en-transito`,
+      { headers: getAuthHeaders() }
+    );
+    if (!res.ok) return 0;
+    const body = await res.json();
+    return body.stockEnTransito ?? 0;
+  } catch {
+    return 0;
+  }
+}

@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -75,6 +74,14 @@ public class ordenCompraController {
         return ResponseEntity.ok(service.listarPorProveedor(proveedorId, page, limit));
     }
 
+    // GET /api/ordenes-compra/producto/{productoId}/en-transito
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
+    @GetMapping("/producto/{productoId}/en-transito")
+    public ResponseEntity<java.util.Map<String, Long>> obtenerStockEnTransito(
+            @PathVariable Integer productoId) {
+        return ResponseEntity.ok(service.obtenerStockEnTransito(productoId));
+    }
+
     // POST /api/ordenes-compra/{id}/items
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
     @PostMapping("/{id}/items")
@@ -104,14 +111,14 @@ public class ordenCompraController {
     }
 
     // PATCH /api/ordenes-compra/{id}/emitir
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
     @PatchMapping("/{id}/emitir")
     public ResponseEntity<ordenCompraResponseDto> emitir(@PathVariable Integer id) {
         return ResponseEntity.ok(service.emitir(id));
     }
 
     // PATCH /api/ordenes-compra/{id}/cancelar
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
     @PatchMapping("/{id}/cancelar")
     public ResponseEntity<ordenCompraResponseDto> cancelar(@PathVariable Integer id) {
         return ResponseEntity.ok(service.cancelar(id));

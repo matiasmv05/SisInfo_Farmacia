@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useInventario } from "../../context/InventarioContext";
-import { ClaseAbc } from "../../types/Inventario.types";
+import { ClaseAbc, CategoriaProducto } from "../../types/Inventario.types";
 
 const CATEGORIAS = [
   { value: "ANTIBIOTICOS", label: "Antibióticos" },
@@ -31,8 +31,8 @@ export const InventarioFilters: React.FC = () => {
     setSearchQuery,
     selectedCategoria,
     setSelectedCategoria,
-    selectedClaseAbc,
-    setSelectedClaseAbc,
+    selectedClasificacionAbc,
+    setSelectedClasificacionAbc,
   } = useInventario();
 
   return (
@@ -64,7 +64,7 @@ export const InventarioFilters: React.FC = () => {
         <div className="relative">
           <select
             value={selectedCategoria}
-            onChange={(e) => setSelectedCategoria(e.target.value)}
+            onChange={(e) => setSelectedCategoria(e.target.value as CategoriaProducto | "")}
             className="appearance-none w-full md:w-48 pl-3 pr-8 py-2.5 bg-surface-container-low border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary/30 focus:outline-none font-body-md text-body-md text-on-surface transition-all cursor-pointer"
           >
             <option value="">Categoría</option>
@@ -82,9 +82,9 @@ export const InventarioFilters: React.FC = () => {
         {/* Selector de Clase ABC */}
         <div className="relative">
           <select
-            value={selectedClaseAbc}
+            value={selectedClasificacionAbc}
             onChange={(e) =>
-              setSelectedClaseAbc(e.target.value as ClaseAbc | "ALL")
+              setSelectedClasificacionAbc(e.target.value === "ALL" ? "" : e.target.value)
             }
             className="appearance-none w-full md:w-36 pl-3 pr-8 py-2.5 bg-surface-container-low border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary/30 focus:outline-none font-body-md text-body-md text-on-surface transition-all cursor-pointer"
           >
@@ -99,11 +99,11 @@ export const InventarioFilters: React.FC = () => {
         </div>
 
         {/* Botón de limpiar filtros — aparece si hay alguno activo */}
-        {(selectedCategoria || selectedClaseAbc !== "ALL") && (
+        {(selectedCategoria || selectedClasificacionAbc) && (
           <button
             onClick={() => {
               setSelectedCategoria("");
-              setSelectedClaseAbc("ALL");
+              setSelectedClasificacionAbc("");
             }}
             className="flex items-center gap-1.5 px-3 py-2.5 text-primary border border-primary/30 bg-primary/5 rounded hover:bg-primary/10 transition-colors font-label-md text-label-md"
           >

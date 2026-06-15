@@ -36,16 +36,33 @@ export async function getDashboardData(): Promise<DashboardData> {
   const resumen =
     resumenAlertas.status === "fulfilled"
       ? resumenAlertas.value
-      : { total: 0, alta: 0, media: 0, baja: 0 };
+      : { total: 0, alta: 0, media: 0, baja: 0, vencimientos: 0 };
 
   const stockData =
     stockInfo.status === "fulfilled"
       ? stockInfo.value
       : { criticos: 0, totalSkus: 0 };
 
+  // Contar alertas de stock_minimo (son las que aparecen en la tabla)
+  const alertasStockCritico = alertasPage.status === "fulfilled"
+    ? (alertasPage.value.data ?? []).filter(a => a.tipo === 'stock_minimo').length
+    : 0;
+
+  // % Stock Crítico = alertas de stock_minimo / total SKUs
   const pctStockCritico =
     stockData.totalSkus > 0
-      ? Number(((stockData.criticos / stockData.totalSkus) * 100).toFixed(1))
+      ? Number(((alertasStockCritico / stockData.totalSkus) * 100).toFixed(1))
+      : 0;
+
+  // Calcular % próximos a vencer usando la propiedad vencimientos del resumen
+  const alertasVencimiento =
+    resumenAlertas.status === "fulfilled" && "vencimientos" in resumen.valueOf()
+      ? (resumen as any).vencimientos
+      : 0;
+
+  const pctProximosVencer =
+    stockData.totalSkus > 0
+      ? Number(((alertasVencimiento / stockData.totalSkus) * 100).toFixed(1))
       : 0;
 
   const kpis: DashboardKpis = {
@@ -53,7 +70,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     alertasCriticas:          resumen.alta,
     alertasMedias:            resumen.media,
     porcentajeStockCritico:   pctStockCritico,
-    porcentajeProximosVencer: 0,   // calculado desde lotes — ampliar luego
+    porcentajeProximosVencer: pctProximosVencer,
     ordenesPendientes:
       ordenesPendientes.status === "fulfilled" ? ordenesPendientes.value : 0,
   };

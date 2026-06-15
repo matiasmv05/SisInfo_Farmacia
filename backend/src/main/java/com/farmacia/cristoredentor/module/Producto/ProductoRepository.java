@@ -81,12 +81,13 @@ boolean existeProductoDuplicado(
     WHERE p.activo = true
       AND (:nombre IS NULL OR LOWER(p.nombre) LIKE LOWER(CONCAT('%', CAST(:nombre AS string), '%')))
       AND (:categoria IS NULL OR p.categoria = :categoria)
+      AND (:clasificacionAbc IS NULL OR p.clasificacionAbc = :clasificacionAbc)
     ORDER BY p.nombre ASC
     """)
 Page<Producto> findByFiltros(
     @Param("nombre") String nombre,
     @Param("categoria") CategoriaProducto categoria, 
+    @Param("clasificacionAbc") ClasificacionABC clasificacionAbc,
     Pageable pageable
-
 );
 }

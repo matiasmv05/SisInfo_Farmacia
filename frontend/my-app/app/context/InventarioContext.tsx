@@ -29,6 +29,8 @@ interface InventarioContextType {
   setSearchQuery: (q: string) => void;
   selectedCategoria: CategoriaProducto | '';
   setSelectedCategoria: (c: CategoriaProducto | '') => void;
+  selectedClasificacionAbc: string;
+  setSelectedClasificacionAbc: (c: string) => void;
   currentPage: number;
   setCurrentPage: (p: number) => void;
   itemsPerPage: number;
@@ -55,6 +57,7 @@ export const InventarioProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const [searchQuery, setSearchQueryRaw]             = useState('');
   const [selectedCategoria, setSelectedCategoriaRaw] = useState<CategoriaProducto | ''>('');
+  const [selectedClasificacionAbc, setSelectedClasificacionAbcRaw] = useState<string>('');
   const [currentPage, setCurrentPageRaw]             = useState(1);
   const itemsPerPage = 20;
 
@@ -72,6 +75,11 @@ export const InventarioProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setCurrentPageRaw(1);
   }, []);
 
+  const setSelectedClasificacionAbc = useCallback((c: string) => {
+    setSelectedClasificacionAbcRaw(c);
+    setCurrentPageRaw(1);
+  }, []);
+
   const setCurrentPage = useCallback((p: number) => setCurrentPageRaw(p), []);
 
   const loadData = useCallback(async () => {
@@ -83,6 +91,7 @@ export const InventarioProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         limit: itemsPerPage,
         nombre: debouncedSearch || undefined,
         categoria: selectedCategoria || undefined,
+        clasificacionAbc: selectedClasificacionAbc || undefined,
       });
       setItems(res.data);
       setTotalItems(res.totalElements); 
@@ -91,10 +100,10 @@ export const InventarioProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, debouncedSearch, selectedCategoria]);
+  }, [currentPage, itemsPerPage, debouncedSearch, selectedCategoria, selectedClasificacionAbc]);
 
   useEffect(() => { loadData(); }, [loadData]);
-  useEffect(() => { setCurrentPageRaw(1); }, [debouncedSearch, selectedCategoria]);
+  useEffect(() => { setCurrentPageRaw(1); }, [debouncedSearch, selectedCategoria, selectedClasificacionAbc]);
 
   const openModal  = useCallback(() => setIsModalOpen(true), []);
   const closeModal = useCallback(() => setIsModalOpen(false), []);
@@ -189,6 +198,7 @@ const updateProduct = useCallback(async (id: number, payload: Partial<ProductoDe
       items, loading, creating, error,
       searchQuery, setSearchQuery,
       selectedCategoria, setSelectedCategoria,
+      selectedClasificacionAbc, setSelectedClasificacionAbc,
       currentPage, setCurrentPage,
       itemsPerPage, totalItems,
       isModalOpen, openModal, closeModal,

@@ -1,212 +1,209 @@
 'use client';
 
 import React, { useState } from 'react';
-import './reportes.css';
+import { exportarReporteApi } from '../../api/Reporte.api';
 
 export default function ReportesPage() {
+  const [fechaInicio, setFechaInicio]   = useState<string>('');
+  const [fechaFin, setFechaFin]         = useState<string>('');
+  const [loadingReport, setLoadingReport] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType]       = useState<'success' | 'error'>('success');
 
-  const showToast = (message: string) => {
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToastMessage(message);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
+    setToastType(type);
+    setTimeout(() => setToastMessage(null), 4500);
   };
 
-  const handleGenerarReporte = (nombre: string) => {
-    // Aquí iría la lógica de jsPDF u otra librería de generación
-    showToast(`Generando reporte: ${nombre}...`);
+  const handleGenerarReporte = async (tipo: string, nombre: string) => {
+    if (tipo === 'PERDIDAS' && (!fechaInicio || !fechaFin)) {
+      showToast('Selecciona Fecha de Inicio y Fin para el reporte de pérdidas.', 'error');
+      return;
+    }
+    setLoadingReport(tipo);
+    showToast(`Generando reporte de ${nombre}...`, 'success');
+
+    const response = await exportarReporteApi({
+      tipo,
+      fechaInicio: fechaInicio || undefined,
+      fechaFin:    fechaFin    || undefined,
+    });
+
+    setLoadingReport(null);
+
+    if (response.success) {
+      const filename = `reporte_${tipo.toLowerCase()}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      const url  = window.URL.createObjectURL(response.blob);
+      const link = document.createElement('a');
+      link.href  = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showToast(`¡Reporte de ${nombre} descargado correctamente!`, 'success');
+    } else {
+      showToast(response.message, 'error');
+    }
   };
 
   return (
-    <div className="content-area">
-      {/* CABECERA */}
-      <header className="page-header">
-        <h1>Reportes Operativos y Financieros</h1>
-        <p>Exporte documentos en formato PDF para análisis y auditoría</p>
-      </header>
+    <>
+      {/* ── CABECERA ─────────────────────────────────────────────────────────── */}
+      <div className="mb-6">
+        <h2 className="text-headline-md font-headline-md text-on-surface">
+          Reportes Operativos y Financieros
+        </h2>
+        <p className="text-body-md font-body-md text-on-surface-variant mt-1">
+          Exporte documentos en formato PDF con gráficos estadísticos integrados para análisis y auditoría.
+        </p>
+      </div>
 
-      {/* CARD: FILTROS GLOBALES */}
-      <section className="filters-card">
-        <div className="filters-title">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-          </svg>
-          <span>Filtros Globales de Reporte</span>
+      {/* ── FILTROS GLOBALES ─────────────────────────────────────────────────── */}
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-5 mb-6">
+        {/* Título filtros */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+            filter_list
+          </span>
+          <h3 className="text-title-sm font-title-sm text-on-surface">
+            Filtros Globales de Reporte
+          </h3>
         </div>
-        <div className="filters-grid">
-          <div className="filter-group">
-            <label htmlFor="inputFechaInicio">Fecha de Inicio</label>
-            <input type="date" id="inputFechaInicio" className="filter-input" />
+
+        {/* Grid fechas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-label-sm font-label-sm text-on-surface-variant">
+              Fecha de Inicio
+            </label>
+            <input
+              type="date"
+              value={fechaInicio}
+              onChange={(e) => setFechaInicio(e.target.value)}
+              className="w-full px-3 py-2 border border-outline-variant rounded-md text-body-md font-body-md text-on-surface bg-surface-container focus:outline-none focus:border-primary transition-colors"
+            />
           </div>
-          <div className="filter-group">
-            <label htmlFor="inputFechaFin">Fecha de Fin</label>
-            <input type="date" id="inputFechaFin" className="filter-input" />
+
+          <div className="flex flex-col gap-1">
+            <label className="text-label-sm font-label-sm text-on-surface-variant">
+              Fecha de Fin
+            </label>
+            <input
+              type="date"
+              value={fechaFin}
+              onChange={(e) => setFechaFin(e.target.value)}
+              className="w-full px-3 py-2 border border-outline-variant rounded-md text-body-md font-body-md text-on-surface bg-surface-container focus:outline-none focus:border-primary transition-colors"
+            />
           </div>
-          <div className="filter-group">
-            <label htmlFor="selectCategoria">Categoría (Opcional)</label>
-            <select id="selectCategoria" className="filter-input">
-              <option value="">Todas las Categorías</option>
-              <option value="Analgésicos">Analgésicos</option>
-              <option value="Antibióticos">Antibióticos</option>
-              <option value="Antihistamínicos">Antihistamínicos</option>
-              <option value="Cardiovascular">Cardiovascular</option>
-              <option value="Diabetes">Diabetes</option>
-            </select>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-label-sm font-label-sm text-on-surface-variant">
+              Estado de los Filtros
+            </label>
+            <p className="text-body-sm font-body-sm text-on-surface-variant py-2">
+              {fechaInicio && fechaFin
+                ? `Rango activo: ${fechaInicio} al ${fechaFin}`
+                : 'Mostrando datos generales sin filtro de fecha.'}
+            </p>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* CUADRÍCULA DE REPORTES */}
-      <section className="reports-grid">
-        {/* CARD 1: Movimientos de Inventario */}
-        <article className="report-card">
-          <div className="report-card-top">
-            <div className="report-icon-box">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-              </svg>
+      {/* ── TARJETAS DE REPORTES ─────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        {/* CARD 1 — Valorización de Inventario */}
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-5 flex flex-col justify-between min-h-[240px] hover:-translate-y-0.5 hover:shadow-md transition-all">
+          <div>
+            {/* Ícono */}
+            <div className="w-10 h-10 rounded-md bg-primary/10 text-primary flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-[20px]">payments</span>
             </div>
-            <h3>Movimientos de Inventario</h3>
-            <p className="report-desc">
-              Resumen detallado de ingresos (recepciones) y egresos (salidas/ventas) de productos durante el período seleccionado.
+            <h3 className="text-title-md font-title-md text-on-surface mb-2">
+              Reporte de Inventario
+            </h3>
+            <p className="text-body-sm font-body-sm text-on-surface-variant leading-relaxed">
+              Valorización total del inventario actual por lote, clasificaciones ABC de productos y estadísticas generales.
             </p>
           </div>
-          <button 
-            onClick={() => handleGenerarReporte("Movimientos de Inventario")}
-            className="c-btn c-btn--report-default w-full"
+          <button
+            onClick={() => handleGenerarReporte('INVENTARIO', 'Inventario')}
+            disabled={loadingReport !== null}
+            className="mt-4 w-full border border-primary text-primary bg-surface-container-lowest px-4 py-2 rounded font-label-md text-label-md hover:bg-primary/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Generar PDF
+            {loadingReport === 'INVENTARIO' ? 'Generando...' : 'Generar PDF'}
           </button>
-        </article>
+        </div>
 
-        {/* CARD 2: Pérdidas por Caducidad (Danger) */}
-        <article className="report-card report-card--danger">
-          <div className="report-card-top">
-            <div className="report-icon-box">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
+        {/* CARD 2 — Pérdidas por Caducidad */}
+        <div className="bg-surface-container-lowest border border-outline-variant border-l-4 border-l-error rounded-lg p-5 flex flex-col justify-between min-h-[240px] hover:-translate-y-0.5 hover:shadow-md transition-all">
+          <div>
+            <div className="w-10 h-10 rounded-md bg-error/10 text-error flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-[20px]">error</span>
             </div>
-            <h3>Productos por Vencer</h3>
-            <p className="report-desc">
-              Listado crítico de lotes próximos a caducar o ya vencidos. Vital para auditorías y prevención de pérdidas.
+            <h3 className="text-title-md font-title-md text-on-surface mb-2">
+              Reporte de Pérdidas
+            </h3>
+            <p className="text-body-sm font-body-sm text-on-surface-variant leading-relaxed">
+              Medicamentos dados de baja por caducidad, cantidades y pérdidas económicas por período (requiere filtros de fecha).
             </p>
           </div>
-          <button 
-            onClick={() => handleGenerarReporte("Productos por Vencer")}
-            className="c-btn c-btn--report-danger w-full"
+          <button
+            onClick={() => handleGenerarReporte('PERDIDAS', 'Pérdidas')}
+            disabled={loadingReport !== null}
+            className="mt-4 w-full border border-error text-error bg-surface-container-lowest px-4 py-2 rounded font-label-md text-label-md hover:bg-error/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Generar PDF de Alerta
+            {loadingReport === 'PERDIDAS' ? 'Generando...' : 'Generar PDF de Pérdidas'}
           </button>
-        </article>
+        </div>
 
-        {/* CARD 3: Valorización del Inventario */}
-        <article className="report-card">
-          <div className="report-card-top">
-            <div className="report-icon-box">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="1" x2="12" y2="23"></line>
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-              </svg>
+        {/* CARD 3 — Alertas de Stock y Vencimiento */}
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-5 flex flex-col justify-between min-h-[240px] hover:-translate-y-0.5 hover:shadow-md transition-all">
+          <div>
+            <div className="w-10 h-10 rounded-md bg-[#d97706]/10 text-[#d97706] flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-[20px]">warning</span>
             </div>
-            <h3>Valorización de Inventario</h3>
-            <p className="report-desc">
-              Estimación del valor total del stock actual almacenado, calculado en base al costo unitario de cada lote disponible.
+            <h3 className="text-title-md font-title-md text-on-surface mb-2">
+              Reporte de Alertas
+            </h3>
+            <p className="text-body-sm font-body-sm text-on-surface-variant leading-relaxed">
+              Resumen crítico de productos con existencias por debajo del stock mínimo y lotes próximos a vencer.
             </p>
           </div>
-          <button 
-            onClick={() => handleGenerarReporte("Valorización de Inventario")}
-            className="c-btn c-btn--report-default w-full"
+          <button
+            onClick={() => handleGenerarReporte('ALERTAS', 'Alertas')}
+            disabled={loadingReport !== null}
+            className="mt-4 w-full border border-primary text-primary bg-surface-container-lowest px-4 py-2 rounded font-label-md text-label-md hover:bg-primary/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Generar PDF
+            {loadingReport === 'ALERTAS' ? 'Generando...' : 'Generar PDF de Alerta'}
           </button>
-        </article>
+        </div>
 
-        {/* CARD 4: Reporte de Proveedores */}
-        <article className="report-card">
-          <div className="report-card-top">
-            <div className="report-icon-box">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="1" y="3" width="15" height="13"></rect>
-                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                <circle cx="18.5" cy="18.5" r="2.5"></circle>
-              </svg>
-            </div>
-            <h3>Órdenes de Proveedores</h3>
-            <p className="report-desc">
-              Listado de compras y recepciones agrupadas por proveedor. Permite evaluar volúmenes de compra y fiabilidad.
-            </p>
-          </div>
-          <button 
-            onClick={() => handleGenerarReporte("Órdenes de Proveedores")}
-            className="c-btn c-btn--report-default w-full"
-          >
-            Generar PDF
-          </button>
-        </article>
+      </div>
 
-        {/* CARD 5: Clasificación ABC */}
-        <article className="report-card">
-          <div className="report-card-top">
-            <div className="report-icon-box">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
-                <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
-              </svg>
-            </div>
-            <h3>Clasificación ABC</h3>
-            <p className="report-desc">
-              Análisis de rotación de inventario segmentando los productos en categorías A (alta), B (media) y C (baja rotación).
-            </p>
-          </div>
-          <button 
-            onClick={() => handleGenerarReporte("Clasificación ABC")}
-            className="c-btn c-btn--report-default w-full"
-          >
-            Generar PDF
-          </button>
-        </article>
-
-        {/* CARD 6: Auditoría de Usuarios */}
-        <article className="report-card">
-          <div className="report-card-top">
-            <div className="report-icon-box">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-              </svg>
-            </div>
-            <h3>Auditoría de Accesos</h3>
-            <p className="report-desc">
-              Registro de actividad del personal, estados de cuenta (activos/inactivos) y roles dentro del sistema.
-            </p>
-          </div>
-          <button 
-            onClick={() => handleGenerarReporte("Auditoría de Accesos")}
-            className="c-btn c-btn--report-default w-full"
-          >
-            Generar PDF
-          </button>
-        </article>
-
-      </section>
-
-      {/* TOAST NOTIFICATION CONTAINER */}
-      <div className="toast-container">
-        <div className={`toast toast--success ${toastMessage ? 'toast--show' : ''}`}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
+      {/* ── TOAST ────────────────────────────────────────────────────────────── */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
+        <div
+          className={`
+            bg-surface-container-lowest border-l-4 rounded-md shadow-lg
+            px-4 py-3 flex items-center gap-3
+            min-w-[300px] max-w-[450px]
+            text-body-sm font-body-sm text-on-surface
+            transition-transform duration-300
+            ${toastMessage ? 'translate-x-0' : 'translate-x-[120%]'}
+            ${toastType === 'success' ? 'border-l-[color:var(--md-sys-color-tertiary,#16a34a)]' : 'border-l-error'}
+          `}
+        >
+          {toastType === 'success' ? (
+            <span className="material-symbols-outlined text-[20px] text-[#16a34a]">check_circle</span>
+          ) : (
+            <span className="material-symbols-outlined text-[20px] text-error">error</span>
+          )}
           <span>{toastMessage}</span>
         </div>
       </div>
-    </div>
+    </>
   );
 }

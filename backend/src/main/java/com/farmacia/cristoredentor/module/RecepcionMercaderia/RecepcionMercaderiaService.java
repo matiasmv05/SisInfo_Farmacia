@@ -22,6 +22,7 @@ import com.farmacia.cristoredentor.Entity.RecepcionDetalle;
 import com.farmacia.cristoredentor.Entity.RecepcionMercaderia;
 import com.farmacia.cristoredentor.Entity.Usuario;
 import com.farmacia.cristoredentor.Enum.EstadoOrden;
+import com.farmacia.cristoredentor.module.Alerta.AlertaService;
 import com.farmacia.cristoredentor.module.Lote.LoteService;
 import com.farmacia.cristoredentor.module.MovimientoInventario.MovimientoInventarioService;
 import com.farmacia.cristoredentor.module.OrdenCompra.OrdenCompraRepository;
@@ -44,6 +45,7 @@ public class RecepcionMercaderiaService {
     private final ProductoService               productoService;
     private final MovimientoInventarioService          movimientoService;
     private final RecepcionDetalleRepository    recepcionDetalleRepo;
+    private final AlertaService                 alertaService;
 
       public RecepcionMercaderiaService(RecepcionMercaderiaRepository recepcionRepo,
                                       OrdenCompraRepository ordenRepo,
@@ -51,7 +53,8 @@ public class RecepcionMercaderiaService {
                                       LoteService loteService,
                                       ProductoService productoService,
                                       MovimientoInventarioService movimientoService,
-                                     RecepcionDetalleRepository recepcionDetalleRepo) {
+                                     RecepcionDetalleRepository recepcionDetalleRepo,
+                                     AlertaService alertaService) {
         this.recepcionRepo    = recepcionRepo;
         this.ordenRepo        = ordenRepo;
         this.usuarioRepo      = usuarioRepo;
@@ -59,6 +62,7 @@ public class RecepcionMercaderiaService {
         this.productoService  = productoService;
         this.movimientoService = movimientoService;
         this.recepcionDetalleRepo = recepcionDetalleRepo;
+        this.alertaService    = alertaService;
     }
 
      public RecepcionMercaderiaResponseDto registrar(CrearRecepcionDto dto, Integer usuarioId) {
@@ -118,8 +122,11 @@ public class RecepcionMercaderiaService {
                  orden.getId()
             );
 
-            // 4c. Actualizar stock total del producto
-                  productoService.reaplicarClasificacionAbc(producto.getId());
+            // 4c. Actualizar stock total del producto y precio de costo
+            producto.setPrecioCosto(ordenDetalle.getCostoUnitario());
+            productoService.guardar(producto);
+            productoService.reaplicarClasificacionAbc(producto.getId());
+
             // 4d. Vincular detalle a la recepción
             RecepcionDetalle detalle = RecepcionDetalle.builder()
                 .recepcion(recepcion)
@@ -130,11 +137,17 @@ public class RecepcionMercaderiaService {
                 .observacionItem(item.getObservacionItem())
                 .build();
             recepcion.getDetalles().add(detalle);
+            if (ordenDetalle.getRecepciones() != null) {
+                ordenDetalle.getRecepciones().add(detalle);
+            }
         }
 
         // 5. Actualizar estado de la orden
         actualizarEstadoOrden(orden);
         ordenRepo.save(orden);
+
+        // 6. Generar alertas (limpia obsoletas y crea nuevas si es necesario)
+        alertaService.generarAlertasAutomaticas();
 
         return toResponseDto(recepcionRepo.findByIdConDetalles(recepcion.getId())
             .orElseThrow());
@@ -147,30 +160,26 @@ public class RecepcionMercaderiaService {
    private void actualizarEstadoOrden(OrdenCompra orden) {
     boolean todosCompletos = orden.getDetalles().stream()
         .allMatch(d -> {
-            // Fuente de verdad: sumar desde recepcion_detalle
-            int totalRecibido = d.getRecepciones().stream()
-                .mapToInt(RecepcionDetalle::getCantidadRecibida)
-                .sum();
+            // Usar el repositorio como fuente de verdad, no la colección en memoria
+            int totalRecibido = recepcionDetalleRepo
+                .sumCantidadRecibidaByOrdenDetalleId(d.getId());
             return totalRecibido >= d.getCantidadSolicitada();
         });
 
     boolean algunoRecibido = orden.getDetalles().stream()
-        .anyMatch(d -> d.getRecepciones().stream()
-            .mapToInt(RecepcionDetalle::getCantidadRecibida)
-            .sum() > 0);
+        .anyMatch(d -> recepcionDetalleRepo
+            .sumCantidadRecibidaByOrdenDetalleId(d.getId()) > 0);
 
     if (todosCompletos) {
         orden.setEstado(EstadoOrden.recibida);
     } else if (algunoRecibido) {
         orden.setEstado(EstadoOrden.recibida_parcial);
-    } else {
-        return; 
     }
 
     if (orden.getFechaRecepcion() == null) {
         orden.setFechaRecepcion(OffsetDateTime.now(ZoneOffset.UTC));
     }
-    }
+}
 
     // -------------------------------------------------------------------------
     // LEER

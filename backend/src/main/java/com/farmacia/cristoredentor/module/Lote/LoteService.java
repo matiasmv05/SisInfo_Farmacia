@@ -142,6 +142,7 @@ public class LoteService {
     return loteRepo.findByProductoIdAndNumeroLote(producto.getId(), numeroLote)
         .map(lote -> {
             lote.setCantidad(lote.getCantidad() + cantidad);
+            lote.setCostoUnitario(costo);
             lote.setEstado(EstadoLote.activo);
             return loteRepo.save(lote);
         })

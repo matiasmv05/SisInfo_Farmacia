@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   fetchOrdenesApi,
   crearOrdenApi,
@@ -51,6 +52,7 @@ function DetalleModal({
   onEmitir: (id: number) => Promise<void>;
   onCancelar: (id: number) => Promise<void>;
 }) {
+  const router = useRouter();
   const [acting, setActing] = useState(false);
   const cfg = ESTADO_CONFIG[orden.estado] ?? ESTADO_CONFIG.borrador;
 
@@ -195,6 +197,15 @@ function DetalleModal({
               >
                 {acting && <span className="w-4 h-4 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />}
                 Emitir orden
+              </button>
+            )}
+            {(orden.estado === "emitida" || orden.estado === "recibida_parcial") && (
+              <button
+                onClick={() => router.push(`/recepcion?orderId=${orden.id}`)}
+                className="px-5 py-2 bg-secondary text-on-secondary rounded text-label-md font-label-md hover:bg-secondary/90 flex items-center gap-2 transition-colors shadow-sm"
+              >
+                <span className="material-symbols-outlined text-[18px]">inventory_2</span>
+                Ingresar a Recepción
               </button>
             )}
           </div>
@@ -460,6 +471,7 @@ function NuevaOrdenModal({
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function OrdenesPage() {
+  const router = useRouter();
   const [ordenes, setOrdenes]       = useState<OrdenCompraResponseDto[]>([]);
   const [total, setTotal]           = useState(0);
   const [loading, setLoading]       = useState(true);
@@ -471,6 +483,7 @@ export default function OrdenesPage() {
   const [detalle, setDetalle]       = useState<OrdenCompraResponseDto | null>(null);
   const [showNueva, setShowNueva]   = useState(false);
   const [proveedores, setProveedores] = useState<{ id: number; nombre: string }[]>([]);
+  const [proveedoresError, setProveedoresError] = useState<string | null>(null);
   const LIMIT = 20;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -498,20 +511,35 @@ export default function OrdenesPage() {
   useEffect(() => { loadOrdenes(); }, [loadOrdenes]);
   useEffect(() => { setCurrentPage(0); }, [estadoFilter]);
 
-  // Cargar proveedores para el modal (reutilizamos el endpoint de proveedores)
+  // Cargar proveedores para el modal
   useEffect(() => {
+    const token = sessionStorage.getItem("farmacia_token") ?? localStorage.getItem("farmacia_token") ?? "";
     fetch(
       `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"}/api/proveedores?activo=true&page=0&limit=100`,
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionStorage.getItem("farmacia_token") ?? localStorage.getItem("farmacia_token") ?? ""}`,
+          Authorization: `Bearer ${token}`,
         },
       }
     )
-      .then((r) => r.json())
-      .then((body) => setProveedores(body.data ?? []))
-      .catch(() => {});
+      .then((r) => {
+        if (!r.ok) {
+          if (r.status === 403) {
+            throw new Error("No tienes permiso para ver proveedores");
+          }
+          throw new Error(`Error ${r.status} al cargar proveedores`);
+        }
+        return r.json();
+      })
+      .then((body) => {
+        setProveedores(body.data ?? []);
+        setProveedoresError(null);
+      })
+      .catch((err) => {
+        console.error("Error cargando proveedores:", err);
+        setProveedoresError(err instanceof Error ? err.message : "Error al cargar proveedores");
+      });
   }, []);
 
   // Filtrar por búsqueda local (por proveedor o id)
@@ -572,12 +600,22 @@ export default function OrdenesPage() {
           </div>
           <button
             onClick={() => setShowNueva(true)}
-            className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded shadow-sm hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center gap-2 self-start sm:self-auto"
+            disabled={proveedoresError !== null}
+            className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded shadow-sm hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center gap-2 self-start sm:self-auto disabled:opacity-50 disabled:cursor-not-allowed"
+            title={proveedoresError || "Crear nueva orden"}
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
             Nueva Orden
           </button>
         </div>
+
+        {/* Error cargando proveedores */}
+        {proveedoresError && (
+          <div className="flex items-center gap-2 bg-error-container/20 border border-error/30 text-error rounded-lg px-4 py-3 text-body-sm">
+            <span className="material-symbols-outlined text-[18px]">error_outline</span>
+            <span>{proveedoresError}</span>
+          </div>
+        )}
 
         {/* Filtros */}
         <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
@@ -691,6 +729,15 @@ export default function OrdenesPage() {
                                   className="text-on-surface-variant hover:text-primary transition-colors p-1 rounded"
                                 >
                                   <span className="material-symbols-outlined text-[20px]">send</span>
+                                </button>
+                              )}
+                              {(orden.estado === "emitida" || orden.estado === "recibida_parcial") && (
+                                <button
+                                  onClick={() => router.push(`/recepcion?orderId=${orden.id}`)}
+                                  title="Ingresar a Recepción"
+                                  className="text-on-surface-variant hover:text-secondary transition-colors p-1 rounded"
+                                >
+                                  <span className="material-symbols-outlined text-[20px]">inventory_2</span>
                                 </button>
                               )}
                               {(orden.estado === "borrador" || orden.estado === "emitida") && (

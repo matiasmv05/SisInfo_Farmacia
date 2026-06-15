@@ -7,6 +7,7 @@ import KpiCard from "../../components/dashboard/KPICard";
 import AlertsTable from "../../components/dashboard/AlertsTable";
 import AbcDistribution from "../../components/dashboard/AbcDistribution";
 import { getDashboardData, DashboardData } from "../../service/Dashboard.service";
+import { generarAlertasManualApi } from "../../api/Dashboard.api";
 
 // ─── Skeleton para KPI cards ──────────────────────────────────────────────────
 function KpiSkeleton() {
@@ -23,12 +24,26 @@ export default function DashboardPage() {
   const [data, setData]       = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
+  const [generandoAlertas, setGenerandoAlertas] = useState(false);
 
   const refreshDashboard = () => {
     getDashboardData()
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar"))
       .finally(() => setLoading(false));
+  };
+
+  const handleGenerarAlertas = async () => {
+    setGenerandoAlertas(true);
+    try {
+      await generarAlertasManualApi();
+      // Refresca inmediatamente después de generar
+      await refreshDashboard();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al generar alertas");
+    } finally {
+      setGenerandoAlertas(false);
+    }
   };
 
   useEffect(() => {
@@ -50,6 +65,14 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex gap-3">
+          <button
+            onClick={handleGenerarAlertas}
+            disabled={generandoAlertas}
+            className="bg-surface-container-lowest border border-tertiary text-tertiary px-4 py-2 rounded font-label-md text-label-md hover:bg-surface-container transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="material-symbols-outlined text-[18px]">refresh</span>
+            {generandoAlertas ? "Generando..." : "Generar Alertas"}
+          </button>
           <Link href="/movimiento" className="bg-surface-container-lowest border border-primary text-primary px-4 py-2 rounded font-label-md text-label-md hover:bg-surface-container transition-colors flex items-center gap-2">
             <span className="material-symbols-outlined text-[18px]">remove</span>
             Registrar Salida

@@ -1,16 +1,16 @@
 import { NavItem } from "../app/types/Nav.types";
 
+
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard",         href: "/dashboard",         icon: "dashboard" },
-  { label: "Inventario",        href: "/inventario",        icon: "inventory_2" },
-  { label: "Órdenes",           href: "/ordenes",           icon: "receipt_long" },
-  { label: "Recepción",         href: "/recepcion",         icon: "swap_horiz" },
-  { label: "Movimientos",       href: "/movimiento",        icon: "output" },
-  { label: "Clasificación ABC", href: "/clasificacion-abc", icon: "analytics" },
-  { label: "Proveedores",       href: "/proveedores",       icon: "local_shipping" },
-  { label: "Reportes",          href: "/reportes",          icon: "assessment" },
-  { label: "Usuarios",          href: "/usuarios",          icon: "group" },
-  { label: "Configuración",     href: "/configuracion",     icon: "settings" },
+  { label: "Dashboard",         href: "/dashboard",         icon: "dashboard",      roles: ["ADMINISTRADOR"] },
+  { label: "Inventario",        href: "/inventario",        icon: "inventory_2",    roles: ["ADMINISTRADOR", "OPERADOR"] },
+  { label: "Órdenes",           href: "/ordenes",           icon: "receipt_long",   roles: ["ADMINISTRADOR", "OPERADOR"] },
+  { label: "Recepción",         href: "/recepcion",         icon: "swap_horiz",     roles: ["ADMINISTRADOR", "OPERADOR"] },
+  { label: "Movimientos",       href: "/movimiento",        icon: "output",         roles: ["ADMINISTRADOR", "OPERADOR"] },
+  { label: "Clasificación ABC", href: "/clasificacion-abc", icon: "analytics",      roles: ["ADMINISTRADOR"] },
+  { label: "Proveedores",       href: "/proveedores",       icon: "local_shipping", roles: ["ADMINISTRADOR"] },
+  { label: "Reportes",          href: "/reportes",          icon: "assessment",     roles: ["ADMINISTRADOR"] },
+  { label: "Usuarios",          href: "/usuarios",          icon: "group",          roles: ["ADMINISTRADOR"] },
 ];
 
 export const ROUTES = {
@@ -26,6 +26,5 @@ export const ROUTES = {
   crearProveedores: "/proveedores/crear",
   reportes:         "/reportes",
   usuarios:         "/usuarios",
-  configuracion:    "/configuracion",
   crearProveedor:   "/proveedor/crear"
 };

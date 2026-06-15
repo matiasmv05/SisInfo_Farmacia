@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { fetchOrdenesApi, fetchOrdenByIdApi } from "../../api/OrdenCompra.api";
 import { registrarRecepcionApi, fetchRecepcionesPorOrdenApi } from "../../api/Recepcion.api";
 import { OrdenCompraResponseDto, OrdenCompraItemDto } from "../../types/OrdenCompra.types";
@@ -18,6 +19,7 @@ export default function RecepcionPage() {
   const [selectedOrderId, setSelectedOrderId] = useState<string>("");
   const [orderDetail, setOrderDetail] = useState<OrdenCompraResponseDto | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const searchParams = useSearchParams();
   
   const [recepcionesHistory, setRecepcionesHistory] = useState<RecepcionMercaderiaResponseDto[]>([]);
 
@@ -47,6 +49,13 @@ export default function RecepcionPage() {
   useEffect(() => {
     loadOrdenesPendientes();
   }, [loadOrdenesPendientes]);
+
+  useEffect(() => {
+    const orderIdParam = searchParams.get("orderId");
+    if (orderIdParam && !selectedOrderId) {
+      setSelectedOrderId(orderIdParam);
+    }
+  }, [searchParams, selectedOrderId]);
 
   const loadOrderDetails = useCallback(async (orderId: number) => {
     setLoadingDetails(true);
@@ -176,9 +185,47 @@ export default function RecepcionPage() {
         })),
       });
 
-      setSuccess("Recepción registrada con éxito.");
-      loadOrdenesPendientes();
-      loadOrderDetails(Number(selectedOrderId));
+      // Recargar estado actualizado de la orden inmediatamente
+      const updatedOrder = await fetchOrdenByIdApi(Number(selectedOrderId));
+      
+      if (updatedOrder.estado === 'recibida') {
+        setSuccess("✓ Orden completamente recibida. Seleccione otra orden.");
+        setSelectedOrderId("");
+        loadOrdenesPendientes();
+      } else {
+        setSuccess("Recepción registrada con éxito.");
+        setOrderDetail(updatedOrder);
+        
+        // Recalcular items pendientes con la información actualizada
+        const history = await fetchRecepcionesPorOrdenApi({ ordenCompraId: Number(selectedOrderId), limit: 100 });
+        setRecepcionesHistory(history.data);
+
+        const counts: Record<number, number> = {};
+        history.data.forEach(r => {
+          r.items.forEach(item => {
+            counts[item.ordenDetalleId] = (counts[item.ordenDetalleId] || 0) + item.cantidadRecibida;
+          });
+        });
+
+        const pendingItems = updatedOrder.items
+          .filter(item => {
+             const rec = counts[item.id] || 0;
+             return rec < item.cantidadSolicitada;
+          })
+          .map(item => ({
+            ordenDetalleId: item.id,
+            cantidadRecibida: 0,
+            numeroLote: "",
+            fechaVencimiento: "",
+            observacionItem: "",
+            productoNombre: item.productoNombre,
+            cantidadSolicitada: item.cantidadSolicitada,
+            pendiente: item.cantidadSolicitada - (counts[item.id] || 0),
+          }));
+
+        setItems(pendingItems);
+        loadOrdenesPendientes();
+      }
     } catch (err: any) {
       setError(err.message || "Error al registrar la recepción.");
     } finally {

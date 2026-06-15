@@ -7,6 +7,7 @@ import { AlertaDetalleDTO } from "../../types/dashboard.types";
 import { marcarAlertaLeidaApi } from "../../api/Dashboard.api";
 import MarcarVencidoModal from "./Marcarvencidomodal";
 import SalidaRapidaModal from "./SalidaRapidaModal";
+import AsignarStockModal from "./AsignarStockModal";
 
 interface AlertsTableProps {
   alerts: AlertaDetalleDTO[];
@@ -46,11 +47,19 @@ interface ModalSalidaState {
   stockActual: number;
 }
 
+interface ModalAsignarStockState {
+  alertaId:       number;
+  productoId:     number;
+  productoNombre: string;
+  stockActual:    number;
+}
+
 export default function AlertsTable({ alerts, total, onAlertAction }: AlertsTableProps) {
   const router = useRouter();
-  const [actionError,   setActionError]   = useState<string | null>(null);
-  const [modalVencido,  setModalVencido]  = useState<ModalVencidoState | null>(null);
-  const [modalSalida,   setModalSalida]   = useState<ModalSalidaState | null>(null);
+  const [actionError,       setActionError]       = useState<string | null>(null);
+  const [modalVencido,      setModalVencido]      = useState<ModalVencidoState | null>(null);
+  const [modalSalida,       setModalSalida]       = useState<ModalSalidaState | null>(null);
+  const [modalAsignarStock, setModalAsignarStock] = useState<ModalAsignarStockState | null>(null);
   // Ocultación optimista: la alerta desaparece al instante tras la acción
   const [hidden, setHidden] = useState<HiddenSet>(new Set());
 
@@ -58,18 +67,22 @@ export default function AlertsTable({ alerts, total, onAlertAction }: AlertsTabl
     setHidden(prev => new Set([...prev, id]));
 
   // ── Llamada compartida post-acción ────────────────────────────────────────
-  // 1. Marca la alerta como leída en el backend
+  // 1. Marca la alerta como leída en el backend (espera a que se complete)
   // 2. La oculta optimistamente en la UI
   // 3. Refresca el dashboard (para actualizar KPIs)
   const handleAccionExitosa = async (alertaId: number) => {
     try {
       await marcarAlertaLeidaApi(alertaId);
-    } catch {
-      // Si falla marcarLeida no bloqueamos — la alerta se ocultó localmente
-      // y el refresco del dashboard la quitará cuando vuelva a cargar
+    } catch (err) {
+      // Si falla marcar como leída, aún así la ocultamos localmente
+      // El siguiente refresco del dashboard la quitará del listado
+      console.warn("Error al marcar alerta como leída:", err);
     }
     ocultarAlerta(alertaId);
-    onAlertAction?.();
+    // Refrescar después de marcar como leída
+    if (onAlertAction) {
+      setTimeout(() => onAlertAction(), 300); // Pequeño delay para asegurar que se persista en el backend
+    }
   };
 
   // ── Abrir modal de vencimiento ────────────────────────────────────────────
@@ -94,11 +107,17 @@ export default function AlertsTable({ alerts, total, onAlertAction }: AlertsTabl
     });
   };
 
-  // ── Navegar a orden de compra con producto pre-seleccionado ───────────────
- const handleOrdenarReposicion = (alert: AlertaDetalleDTO) => {
-  router.push(`/ordenes/crear`);
-};
+  // ── Abrir modal para asignar stock ───────────────────────────────────────
+  const abrirModalAsignarStock = (alert: AlertaDetalleDTO) => {
+    setModalAsignarStock({
+      alertaId:       alert.id,
+      productoId:     alert.productoId,
+      productoNombre: alert.productoNombre,
+      stockActual:    alert.stockActual ?? 0,
+    });
+  };
 
+  // Combinar: alertas no leídas + que no estén en hidden
   const visibles = alerts.filter(a => !hidden.has(a.id));
 
   return (
@@ -123,6 +142,17 @@ export default function AlertsTable({ alerts, total, onAlertAction }: AlertsTabl
           stockActual={modalSalida.stockActual}
           onConfirm={() => handleAccionExitosa(modalSalida.alertaId)}
           onClose={() => setModalSalida(null)}
+        />
+      )}
+
+      {/* ── Modal: asignar stock ── */}
+      {modalAsignarStock && (
+        <AsignarStockModal
+          productoId={modalAsignarStock.productoId}
+          productoNombre={modalAsignarStock.productoNombre}
+          stockActual={modalAsignarStock.stockActual}
+          onConfirm={() => handleAccionExitosa(modalAsignarStock.alertaId)}
+          onClose={() => setModalAsignarStock(null)}
         />
       )}
 
@@ -224,11 +254,11 @@ export default function AlertsTable({ alerts, total, onAlertAction }: AlertsTabl
                         <div className="flex items-center justify-center gap-1">
 
                           {esStockCritico && (
-                            // Stock crítico → crear orden de reposición
+                            // Stock crítico → asignar stock con sugerencia
                             <button
-                              onClick={() => handleOrdenarReposicion(alert)}
+                              onClick={() => abrirModalAsignarStock(alert)}
                               className="p-1.5 rounded-md text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors"
-                              title="Crear orden de reposición"
+                              title="Asignar stock al producto"
                             >
                               <span className="material-symbols-outlined text-[18px]">shopping_cart</span>
                             </button>

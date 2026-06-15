@@ -21,17 +21,21 @@ function getAuthHeaders(): HeadersInit {
 }
 
 // GET /api/productos?page=0&limit=20&nombre=...&categoria=...
-export async function fetchProductosApi(params: {
+export interface FetchProductosParams {
   page?: number;
   limit?: number;
   nombre?: string;
-  categoria?: CategoriaProducto | '';
-}): Promise<PaginatedResponse<ProductoDetalle>> {
+  categoria?: string;
+  clasificacionAbc?: string;
+}
+
+export async function fetchProductosApi(params: FetchProductosParams): Promise<PaginatedResponse<ProductoDetalle>> {
   const query = new URLSearchParams();
   query.set('page',  String(params.page  ?? 0));
   query.set('limit', String(params.limit ?? 20));
-  if (params.nombre)   query.set('nombre',    params.nombre);
-  if (params.categoria) query.set('categoria', params.categoria);
+  if (params.nombre) query.append("nombre", params.nombre);
+  if (params.categoria) query.append("categoria", params.categoria);
+  if (params.clasificacionAbc) query.append("clasificacionAbc", params.clasificacionAbc);
  
   const res = await fetch(`${BASE_URL}/api/productos?${query}`, {
     headers: getAuthHeaders(),
@@ -117,4 +121,22 @@ export async function buscarProductosApi(nombre: string): Promise<ProductoResume
     laboratorio: p.laboratorio,
     presentacion: p.presentacion,
   }));
+}
+
+// GET /api/productos/{productoId}/proveedores
+export interface ProductoProveedorDetalle {
+  id: number;
+  proveedorId: number;
+  proveedorNombre: string;
+  codigoProductoProveedor: string;
+  costo: number;
+  esPrincipal: boolean;
+}
+
+export async function fetchProveedoresDelProductoApi(productoId: number): Promise<ProductoProveedorDetalle[]> {
+  const res = await fetch(`${BASE_URL}/api/productos/${productoId}/proveedores`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+  return res.json();
 }

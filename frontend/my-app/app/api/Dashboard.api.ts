@@ -17,6 +17,32 @@ function getAuthHeaders(): HeadersInit {
   };
 }
 
+function parseErrorMessage(errorText: string): string {
+  try {
+    const errJson = JSON.parse(errorText);
+    // Prioridad: message > error > responseMessage
+    if (errJson.message) return errJson.message;
+    if (errJson.error) return errJson.error;
+    if (errJson.responseMessage) return errJson.responseMessage;
+    if (errJson.errors && Array.isArray(errJson.errors)) {
+      return errJson.errors.map((e: any) => e.defaultMessage || e.code).join(", ");
+    }
+  } catch { /* not JSON */ }
+  return errorText;
+}
+
+function getCurrentUserId(): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    const userJson = sessionStorage.getItem("farmacia_user") ?? localStorage.getItem("farmacia_user");
+    if (userJson) {
+      const user = JSON.parse(userJson);
+      return user.id ?? 0;
+    }
+  } catch { /* parsing error */ }
+  return 0;
+}
+
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let msg = `Error ${res.status}`;
@@ -51,6 +77,7 @@ export async function getResumenAlertasApi(): Promise<{
   alta: number;
   media: number;
   baja: number;
+  vencimientos: number;
 }> {
   const res = await fetch(`${BASE_URL}/api/alertas/resumen`, {
     headers: getAuthHeaders(),
@@ -64,6 +91,7 @@ export async function getResumenAlertasApi(): Promise<{
       alta:  items.filter((a) => a.criticidad === "ALTA").length,
       media: items.filter((a) => a.criticidad === "MEDIA").length,
       baja:  items.filter((a) => a.criticidad === "BAJA").length,
+      vencimientos: items.filter((a) => a.tipo === "vencimiento_rojo" || a.tipo === "vencimiento_amarillo" || a.tipo === "vencimiento_verde").length,
     };
   }
   return handleResponse(res);
@@ -78,17 +106,20 @@ export async function getUltimoAbcDashboardApi(): Promise<AbcHistorialDTO> {
   return handleResponse(res);
 }
 
-// ─── GET /api/ordenes?estado=PENDIENTE&page=0&limit=1 ────────────────────────
-// Solo necesitamos el total de órdenes pendientes.
+// ─── GET /api/ordenes-compra?estado=emitida,recibida_parcial&page=0&limit=1 ────────────────────
+// Cuenta órdenes emitidas que aún no fueron totalmente recibidas
 export async function getOrdenesPendientesCountApi(): Promise<number> {
-  const res = await fetch(
-    `${BASE_URL}/api/ordenes?estado=PENDIENTE&page=0&limit=1`,
-    { headers: getAuthHeaders() }
-  );
-  if (!res.ok) return 0; // no bloquear el dashboard si falla
-  const body = await res.json();
-  // El backend devuelve PaginatedResponseDto con totalElements
-  return body.totalElements ?? body.total ?? 0;
+  try {
+    const res = await fetch(
+      `${BASE_URL}/api/ordenes-compra?estado=emitida,recibida_parcial&page=0&limit=1`,
+      { headers: getAuthHeaders() }
+    );
+    if (res.ok) {
+      const body = await res.json();
+      return body.totalElements ?? body.total ?? 0;
+    }
+  } catch {}
+  return 0;
 }
 
 // ─── GET /api/productos/stock-critico ─────────────────────────────────────────
@@ -124,20 +155,34 @@ export async function getStockCriticoCountApi(): Promise<{
 
 // ─── PATCH /api/alertas/{id}/leida ────────────────────────────────────────────
 // Marca una alerta como leída tras ejecutar una acción sobre ella.
-// El body que espera el backend es AlertaMarcarLeidaDTO — revisá si tiene campos
-// adicionales; si solo es { leida: true }, esto está completo.
 export async function marcarAlertaLeidaApi(alertaId: number): Promise<void> {
+  const usuarioGestionaId = getCurrentUserId();
+  if (!usuarioGestionaId) {
+    throw new Error("No se pudo obtener el ID del usuario actual");
+  }
+
   const res = await fetch(`${BASE_URL}/api/alertas/${alertaId}/leida`, {
     method: "PATCH",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ leida: true }),
+    body: JSON.stringify({ usuarioGestionaId }),
   });
   if (!res.ok) {
-    let msg = `Error ${res.status}`;
-    try {
-      const body = await res.json();
-      msg = body?.message ?? body?.error ?? msg;
-    } catch { /* sin body JSON */ }
+    const errorText = await res.text();
+    const msg = parseErrorMessage(errorText);
+    throw new Error(msg);
+  }
+}
+
+// ─── POST /api/alertas/generar (DEBUG) ──────────────────────────────────────
+// Dispara manualmente la generación de alertas (útil para depuración)
+export async function generarAlertasManualApi(): Promise<void> {
+  const res = await fetch(`${BASE_URL}/api/alertas/generar`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    const msg = parseErrorMessage(errorText);
     throw new Error(msg);
   }
 }
@@ -175,11 +220,8 @@ export async function registrarSalidaApi(
     body: JSON.stringify({ productoId, cantidad }),
   });
   if (!res.ok) {
-    let msg = `Error ${res.status}`;
-    try {
-      const body = await res.json();
-      msg = body?.message ?? body?.error ?? msg;
-    } catch { /* sin body JSON */ }
+    const errorText = await res.text();
+    const msg = parseErrorMessage(errorText);
     throw new Error(msg);
   }
 }

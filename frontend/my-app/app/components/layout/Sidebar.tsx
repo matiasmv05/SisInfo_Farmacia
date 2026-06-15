@@ -9,6 +9,11 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
+  // Filtra los ítems según el rol del usuario autenticado
+  const visibleItems = NAV_ITEMS.filter((item) =>
+    user?.rol ? item.roles.includes(user.rol as "ADMINISTRADOR" | "OPERADOR") : false
+  );
+
   return (
     <aside className="fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant flex flex-col z-30">
       <div className="flex flex-col h-full py-6">
@@ -25,7 +30,7 @@ export default function Sidebar() {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto">
           <ul className="space-y-1">
-            {NAV_ITEMS.map((item) => {
+            {visibleItems.map((item) => {
               const isActive = pathname.startsWith(item.href);
               return (
                 <li key={item.href}>
@@ -37,11 +42,7 @@ export default function Sidebar() {
                         : "border-transparent text-on-surface-variant hover:bg-surface-container-high"
                     }`}
                   >
-                    <span
-                      className={`material-symbols-outlined text-xl ${
-                        isActive ? "fill" : ""
-                      }`}
-                    >
+                    <span className={`material-symbols-outlined text-xl ${isActive ? "fill" : ""}`}>
                       {item.icon}
                     </span>
                     <span>{item.label}</span>

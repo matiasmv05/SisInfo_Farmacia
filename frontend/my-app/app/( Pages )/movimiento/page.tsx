@@ -25,6 +25,7 @@ export default function SalidaInventarioPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<"stock" | "fefo" | "generic">("generic");
   const [success, setSuccess] = useState<string | null>(null);
   const [showAllLotes, setShowAllLotes] = useState(false);
   const [historialProductoId, setHistorialProductoId] = useState<{ id: number; nombre: string } | null>(null);
@@ -90,7 +91,16 @@ export default function SalidaInventarioPage() {
       setSelectedProduct(null);
       setLotes([]);
     } catch (err: any) {
-      setError(err.message || "Error al procesar la salida.");
+      const msg: string = err.message || "Error al procesar la salida.";
+      // Detectar tipo de error para diferenciar el banner
+      if (msg.includes("aptas para venta") || msg.includes("per\u00edodo m\u00ednimo")) {
+        setErrorType("fefo");
+      } else if (msg.includes("Stock insuficiente") || msg.includes("Disponible:")) {
+        setErrorType("stock");
+      } else {
+        setErrorType("generic");
+      }
+      setError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -117,10 +127,38 @@ export default function SalidaInventarioPage() {
 
         {/* Notifications */}
         {error && (
-          <div className="p-4 rounded-lg bg-error-container text-on-error-container border border-error/30 flex items-center gap-2 font-body-sm shadow-sm">
-            <span className="material-symbols-outlined text-[18px]">error</span>
-            {error}
-          </div>
+          errorType === "fefo" ? (
+            // Error FEFO: lotes con restricción por período mínimo de vencimiento
+            <div className="rounded-xl border border-warning/40 bg-warning-container/10 overflow-hidden shadow-sm">
+              <div className="flex items-center gap-3 px-4 py-3 bg-warning-container/20 border-b border-warning/20">
+                <span className="material-symbols-outlined text-warning text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>timer_off</span>
+                <p className="font-label-md text-warning font-semibold">Stock con restricción de fecha</p>
+              </div>
+              <div className="px-4 py-3 space-y-2">
+                <p className="font-body-sm text-on-surface leading-relaxed">{error}</p>
+                <p className="font-body-xs text-on-surface-variant">
+                  Los lotes cuya fecha de vencimiento es menor o igual al período mínimo configurado para el producto no pueden despacharse, ya que no llegarán en condiciones al cliente.
+                </p>
+              </div>
+            </div>
+          ) : errorType === "stock" ? (
+            // Error de stock insuficiente puro
+            <div className="rounded-xl border border-error/40 bg-error-container/10 overflow-hidden shadow-sm">
+              <div className="flex items-center gap-3 px-4 py-3 bg-error-container/20 border-b border-error/20">
+                <span className="material-symbols-outlined text-error text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>production_quantity_limits</span>
+                <p className="font-label-md text-error font-semibold">Stock insuficiente</p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="font-body-sm text-on-surface leading-relaxed">{error}</p>
+              </div>
+            </div>
+          ) : (
+            // Error genérico
+            <div className="p-4 rounded-lg bg-error-container text-on-error-container border border-error/30 flex items-center gap-2 font-body-sm shadow-sm">
+              <span className="material-symbols-outlined text-[18px]">error</span>
+              {error}
+            </div>
+          )
         )}
         {success && (
           <div className="p-4 rounded-lg bg-secondary-container text-on-secondary-container border border-secondary/30 flex items-center gap-2 font-body-sm shadow-sm">

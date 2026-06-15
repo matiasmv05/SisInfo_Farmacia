@@ -40,7 +40,7 @@ public class ProductoProveedorController {
     }
 
     // GET /api/productos/{productoId}/proveedores
-    @PreAuthorize("hasRole('ADMINISTRADOR')")   
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")   
     @GetMapping
     public ResponseEntity<List<ProductoProveedorDetalleDTO>> listar(
             @PathVariable Integer productoId) {

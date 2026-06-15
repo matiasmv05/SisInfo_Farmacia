@@ -72,5 +72,13 @@ public interface LoteRepository extends JpaRepository<Lote, Integer> {
        "WHERE l.producto.id = :productoId AND l.estado = 'activo'")
      int calcularStockReal(@Param("productoId") Integer productoId);
 
+    @Query("""
+        SELECT l FROM Lote l
+        JOIN FETCH l.producto p
+        WHERE l.estado = com.farmacia.cristoredentor.Enum.EstadoLote.activo
+          AND l.cantidad > 0
+        ORDER BY p.nombre ASC, l.fechaVencimiento ASC
+        """)
+    List<Lote> findLotesActivosConProducto();
      
 }

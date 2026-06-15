@@ -42,4 +42,17 @@ public interface MovimientoInventarioRepository
         AND m.tipoMovimiento = com.farmacia.cristoredentor.Enum.TipoMovimiento.salida
         """)
     java.util.Optional<MovimientoInventario> findSalidaById(@Param("id") Integer id);
+
+    @Query("""
+        SELECT m FROM MovimientoInventario m
+        JOIN FETCH m.producto p
+        JOIN FETCH m.lote l
+        WHERE m.tipoMovimiento = :tipo
+          AND m.fechaHora BETWEEN :desde AND :hasta
+        ORDER BY m.fechaHora DESC
+        """)
+    java.util.List<MovimientoInventario> findByTipoYFechaRange(
+        @Param("tipo") TipoMovimiento tipo,
+        @Param("desde") OffsetDateTime desde,
+        @Param("hasta") OffsetDateTime hasta);
 }

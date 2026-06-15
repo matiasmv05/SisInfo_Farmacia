@@ -32,5 +32,16 @@ public interface OrdenCompraRepository extends JpaRepository<OrdenCompra, Intege
         """)
     Optional<OrdenCompra> findByIdConDetalles(@Param("id") Integer id);
 
+    @Query("""
+        SELECT COALESCE(SUM(d.cantidadSolicitada - 
+            (SELECT COALESCE(SUM(r.cantidadRecibida), 0) FROM RecepcionDetalle r WHERE r.ordenDetalle = d)
+        ), 0L)
+        FROM OrdenCompra o
+        JOIN o.detalles d
+        WHERE d.producto.id = :productoId
+        AND o.estado IN :estados
+        """)
+    Long sumarStockEnTransitoPorProducto(@Param("productoId") Integer productoId, @Param("estados") List<EstadoOrden> estados);
+
     
 }

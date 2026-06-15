@@ -8,7 +8,7 @@ interface Props {
   productoId:     number;
   productoNombre: string;
   stockActual:    number;
-  onConfirm:      () => void;
+  onConfirm:      () => void | Promise<void>;
   onClose:        () => void;
 }
 
@@ -41,7 +41,10 @@ export default function SalidaRapidaModal({
     setError(null);
     try {
       await registrarSalidaApi(productoId, cantidadNum);
-      onConfirm();
+      // Esperar a que onConfirm se complete (que incluye marcar la alerta como leída)
+      if (onConfirm && typeof onConfirm === 'function') {
+        await onConfirm();
+      }
       onClose();
     } catch (e) {
       setError((e as Error).message);
@@ -133,10 +136,12 @@ export default function SalidaRapidaModal({
               </div>
             )}
             {error && (
-              <p className="mt-1.5 font-body-sm text-body-sm text-error flex items-center gap-1">
-                <span className="material-symbols-outlined text-[14px]">error</span>
-                {error}
-              </p>
+              <div className="mt-2 p-2.5 bg-error/10 border border-error/30 rounded-lg flex items-start gap-2">
+                <span className="material-symbols-outlined text-[18px] text-error mt-0.5 shrink-0">error</span>
+                <p className="font-body-sm text-body-sm text-error leading-tight flex-1">
+                  {error}
+                </p>
+              </div>
             )}
           </div>
 

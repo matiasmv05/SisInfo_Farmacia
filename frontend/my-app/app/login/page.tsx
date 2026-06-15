@@ -9,6 +9,8 @@ import { loginApi } from "../api/Auth.api";
 import { useAuth } from "../context/Authcontext";
 import { ApiError } from "../types/Auth.types";
 import styles from "./LoginPage.module.css";
+import RegisterForm from "../components/layout/RegisterForm";
+
 
 // ─── Ícono de cruz (brand) ────────────────────────
 function CrossIcon() {
@@ -84,6 +86,7 @@ export default function LoginPage() {
   const [remember,   setRemember]   = useState(false);
   const [isLoading,  setIsLoading]  = useState(false);
   const [errorGlobal, setErrorGlobal] = useState<string | null>(null);
+  const [tab, setTab] = useState<"login" | "register">("login");
 
   // Errores de campo simples
   const [errors, setErrors] = useState({ username: "", password: "" });
@@ -155,110 +158,121 @@ export default function LoginPage() {
   />
 </div>
         {/* ── Panel derecho ── */}
-        <div className={styles.panelRight}>
-          <div className={styles.formHeader}>
-            <p className={styles.formEyebrow}>Acceso al sistema</p>
-            <h2 className={styles.formTitle}>Iniciar sesión</h2>
-          </div>
+       <div className={styles.panelRight}>
 
-          {/* Error global */}
-          {errorGlobal && (
-            <div className={styles.alertError} role="alert">
-              <AlertIcon />
-              <span className={styles.alertErrorText}>{errorGlobal}</span>
-            </div>
+  {/* ── Tabs ── */}
+  <div style={{
+    display: "flex", marginBottom: 28,
+    border: "1px solid #dde0e4", borderRadius: 4, overflow: "hidden",
+  }}>
+    {(["login", "register"] as const).map((t) => (
+      <button
+        key={t}
+        type="button"
+        onClick={() => { setTab(t); setErrorGlobal(null); }}
+        style={{
+          flex: 1, height: 36, border: "none", cursor: "pointer",
+          fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500,
+          letterSpacing: "0.03em",
+          background: tab === t ? "#0f1623" : "#f7f9fb",
+          color: tab === t ? "#ffffff" : "#6b7280",
+          transition: "background 0.15s, color 0.15s",
+        }}
+      >
+        {t === "login" ? "Iniciar sesión" : "Registrarse"}
+      </button>
+    ))}
+  </div>
+
+  {/* ── Contenido según tab ── */}
+  {tab === "login" ? (
+    <>
+      <div className={styles.formHeader}>
+        <p className={styles.formEyebrow}>Acceso al sistema</p>
+        <h2 className={styles.formTitle}>Iniciar sesión</h2>
+      </div>
+
+      {errorGlobal && (
+        <div className={styles.alertError} role="alert">
+          <AlertIcon />
+          <span className={styles.alertErrorText}>{errorGlobal}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} noValidate>
+        <div className={styles.fieldGroup}>
+          <label htmlFor="EmailUsuario" className={styles.fieldLabel}>
+            Email Usuario
+          </label>
+          <input
+            id="EmailUsuario" type="text" autoComplete="EmailUsuario"
+            placeholder="Email: ejemplo@gmail.com"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (errors.username) setErrors((p) => ({ ...p, username: "" }));
+            }}
+            className={`${styles.fieldInput} ${errors.username ? styles.fieldInputError : ""}`}
+            aria-invalid={!!errors.username}
+            aria-describedby={errors.username ? "EmailUsuario-error" : undefined}
+          />
+          {errors.username && (
+            <span id="EmailUsuario-error" className={styles.fieldError}>
+              {errors.username}
+            </span>
           )}
-
-          <form onSubmit={handleSubmit} noValidate>
-            {/* Usuario */}
-            <div className={styles.fieldGroup}>
-              <label htmlFor="EmailUsuario" className={styles.fieldLabel}>
-                Email Usuario
-              </label>
-              <input
-                id="EmailUsuario"
-                type="text"
-                autoComplete="EmailUsuario"
-                placeholder="Email: ejemplo@gmail.com"
-                value={email}
-                onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (errors.username) setErrors((p) => ({ ...p, username: "" }));
-                }}
-                className={`${styles.fieldInput} ${errors.username ? styles.fieldInputError : ""}`}
-                aria-invalid={!!errors.username}
-                aria-describedby={errors.username ? "EmailUsuario-error" : undefined}
-              />
-              {errors.username && (
-                <span id="EmailUsuario-error" className={styles.fieldError}>
-                  {errors.username}
-                </span>
-              )}
-            </div>
-
-            {/* Contraseña */}
-            <div className={styles.fieldGroup}>
-              <label htmlFor="password" className={styles.fieldLabel}>
-                Contraseña
-              </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (errors.password) setErrors((p) => ({ ...p, password: "" }));
-                }}
-                className={`${styles.fieldInput} ${errors.password ? styles.fieldInputError : ""}`}
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? "password-error" : undefined}
-              />
-              {errors.password && (
-                <span id="password-error" className={styles.fieldError}>
-                  {errors.password}
-                </span>
-              )}
-            </div>
-
-           <br />
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className={styles.btnPrimary}
-            >
-              {isLoading ? (
-                <>
-                  <div className={styles.spinner} aria-hidden="true" />
-                  Verificando...
-                </>
-              ) : (
-                <>
-                  Ingresar al sistema
-                  <LoginIcon />
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className={styles.divider} />
-
-          {/* Roles disponibles */}
-          <div className={styles.formFooter}>
-            <div className={styles.roleBadge}>
-              <span className={`${styles.roleDot} ${styles.dotAdmin}`} />
-              Administrador
-            </div>
-            <div className={styles.roleBadge}>
-              <span className={`${styles.roleDot} ${styles.dotOperador}`} />
-              Operador
-            </div>
-          </div>
         </div>
 
+        <div className={styles.fieldGroup}>
+          <label htmlFor="password" className={styles.fieldLabel}>
+            Contraseña
+          </label>
+          <input
+            id="password" type="password" autoComplete="current-password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (errors.password) setErrors((p) => ({ ...p, password: "" }));
+            }}
+            className={`${styles.fieldInput} ${errors.password ? styles.fieldInputError : ""}`}
+            aria-invalid={!!errors.password}
+            aria-describedby={errors.password ? "password-error" : undefined}
+          />
+          {errors.password && (
+            <span id="password-error" className={styles.fieldError}>
+              {errors.password}
+            </span>
+          )}
+        </div>
+
+        <br />
+
+        <button type="submit" disabled={isLoading} className={styles.btnPrimary}>
+          {isLoading ? (
+            <><div className={styles.spinner} aria-hidden="true" />Verificando...</>
+          ) : (
+            <>Ingresar al sistema <LoginIcon /></>
+          )}
+        </button>
+      </form>
+    </>
+  ) : (
+    <RegisterForm onSuccess={() => setTab("login")} />
+  )}
+
+  <div className={styles.divider} />
+  <div className={styles.formFooter}>
+    <div className={styles.roleBadge}>
+      <span className={`${styles.roleDot} ${styles.dotAdmin}`} />
+      Administrador
+    </div>
+    <div className={styles.roleBadge}>
+      <span className={`${styles.roleDot} ${styles.dotOperador}`} />
+      Operador
+    </div>
+  </div>
+</div>
       </div>
     </main>
   );

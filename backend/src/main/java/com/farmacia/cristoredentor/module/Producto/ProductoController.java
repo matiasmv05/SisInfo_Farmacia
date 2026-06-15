@@ -53,8 +53,9 @@ public ResponseEntity<PaginatedResponseDto<ProductoDetalleDTO>> listar(
         @RequestParam(defaultValue = "0")  Integer page,
         @RequestParam(defaultValue = "20") Integer limit,
         @RequestParam(required = false)    String nombre,
-        @RequestParam(required = false)    CategoriaProducto categoria) {
-    return ResponseEntity.ok(service.listarFiltrado(page, limit, nombre, categoria));
+        @RequestParam(required = false)    CategoriaProducto categoria,
+        @RequestParam(required = false)    com.farmacia.cristoredentor.Enum.ClasificacionABC clasificacionAbc) {
+    return ResponseEntity.ok(service.listarFiltrado(page, limit, nombre, categoria, clasificacionAbc));
 }
 
     // GET /api/productos/stock-critico?page=0&limit=20

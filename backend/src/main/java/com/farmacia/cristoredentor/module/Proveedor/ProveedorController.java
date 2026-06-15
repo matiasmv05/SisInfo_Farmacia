@@ -55,8 +55,9 @@ public class ProveedorController {
     }
 
     // GET /api/proveedores?page=0&limit=20&nombre=farma&activo=true
+    // Accesible por ADMINISTRADOR y OPERADOR (para crear órdenes)
     @GetMapping
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
     public ResponseEntity<PaginatedResponseDto<ProveedorResponseDTO>> listar(
             @RequestParam(defaultValue = "0")  Integer page,
             @RequestParam(defaultValue = "20") Integer limit,

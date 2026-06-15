@@ -1,10 +1,11 @@
 package com.farmacia.cristoredentor.Entity;
 import java.time.LocalDateTime;
-import com.farmacia.cristoredentor.Enum.UserRole;
 
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import com.farmacia.cristoredentor.Enum.UserRole;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -29,6 +30,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+
 public class Usuario {
 
     @Id

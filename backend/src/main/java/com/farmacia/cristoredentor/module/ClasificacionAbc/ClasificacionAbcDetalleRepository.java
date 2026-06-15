@@ -24,7 +24,10 @@ public interface ClasificacionAbcDetalleRepository
     )
     FROM Lote l
     WHERE l.estado = :estado
+      AND l.cantidad > 0
+      AND l.costoUnitario > 0
     GROUP BY l.producto.id
+    HAVING SUM(l.cantidad * l.costoUnitario) > 0
     ORDER BY SUM(l.cantidad * l.costoUnitario) DESC
     """)
 List<ValorInventarioProductoDTO> calcularValorInventarioPorProducto(
@@ -41,12 +44,13 @@ List<ValorInventarioProductoDTO> calcularValorInventarioPorProducto(
         com.farmacia.cristoredentor.Enum.TipoMovimiento.ajuste_salida
     )
     AND m.fechaHora >= :desde
+    AND m.cantidad > 0
     GROUP BY m.producto.id
+    HAVING SUM(m.cantidad) > 0
     ORDER BY SUM(m.cantidad) DESC
     """)
 List<ValorInventarioProductoDTO> calcularValorRotacionPorProducto(
-    @Param("desde") OffsetDateTime desde
-);
+    @Param("desde") OffsetDateTime desde);
 
     List<ClasificacionAbcDetalle> findByHistorialIdOrderByPorcentajeAcumuladoAsc(
         Integer historialId);

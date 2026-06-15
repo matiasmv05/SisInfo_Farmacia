@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 import com.farmacia.cristoredentor.Entity.Usuario;
 import com.farmacia.cristoredentor.Enum.UserRole;
 
-@Repository
+@Repository 
 public interface usuarioRepository extends JpaRepository<Usuario, Integer> {
 
     boolean existsByEmail(String email);
@@ -31,5 +31,6 @@ public interface usuarioRepository extends JpaRepository<Usuario, Integer> {
     Optional<Usuario> findFirstByRolAndActivoTrue(UserRole rol);
 
     Optional<Usuario> findByEmail(String usuarioEmail);
+    
 
 }

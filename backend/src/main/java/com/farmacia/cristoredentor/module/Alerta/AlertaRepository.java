@@ -1,6 +1,7 @@
 package com.farmacia.cristoredentor.module.Alerta;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -20,6 +21,9 @@ public interface AlertaRepository extends JpaRepository<Alerta, Integer> {
     // Alertas activas no leídas para el dashboard
     Page<Alerta> findByLeidaFalseOrderByFechaGeneracionDesc(Pageable pageable);
 
+    // Todas las alertas activas sin paginar
+    List<Alerta> findByLeidaFalse();
+
     // Alertas activas por criticidad
     Page<Alerta> findByLeidaFalseAndCriticidadOrderByFechaGeneracionDesc(
         com.farmacia.cristoredentor.Enum.CriticidadAlerta criticidad,
@@ -35,6 +39,9 @@ public interface AlertaRepository extends JpaRepository<Alerta, Integer> {
 
     // Contar alertas activas por tipo (para el dashboard)
     Integer countByTipoAndLeidaFalse(TipoAlerta tipo);
+
+    // Obtener todas las alertas activas de un tipo específico
+    List<Alerta> findByTipoAndLeidaFalseOrderByFechaGeneracionDesc(TipoAlerta tipo);
 
     // AlertaRepository.java — agregar:
 @Modifying

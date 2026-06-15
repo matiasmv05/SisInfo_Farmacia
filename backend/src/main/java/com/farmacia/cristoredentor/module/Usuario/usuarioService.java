@@ -14,6 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.farmacia.cristoredentor.Entity.Usuario;
+import com.farmacia.cristoredentor.Enum.UserRole;
+import com.farmacia.cristoredentor.exceptions.BusinessException;
+import com.farmacia.cristoredentor.module.Auth.dto.RegisterRequest;
 import com.farmacia.cristoredentor.module.Usuario.dto.ActualizarUsuarioDto;
 import com.farmacia.cristoredentor.module.Usuario.dto.crearUsuarioDto;
 import com.farmacia.cristoredentor.module.Usuario.dto.loginUsuarioDto;
@@ -55,6 +58,25 @@ public class usuarioService {
         return usuarioRequest;
 
     }
+
+
+public usuarioRequestDto registrarOperador(RegisterRequest dto) {
+
+    if (repo.existsByEmail(dto.getEmail()))                         // ← repo, no la clase
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "Email ya registrado");
+
+    Usuario usuario = Usuario.builder()
+            .nombreCompleto(dto.getNombreCompleto())
+            .email(dto.getEmail())
+            .passwordHash(passwordEncoder.encode(dto.getPassword())) // ← passwordHash
+            .rol(UserRole.OPERADOR)                                  // ← forzado, nunca del cliente
+            .telefono(dto.getTelefono())                             // ← nullable, sin problema
+            .activo(true)
+            .build();
+
+    Usuario guardado = repo.save(usuario);
+    return modelMapper.map(guardado, usuarioRequestDto.class);
+}
 
     // Listar todos activos sin paginación
     @Transactional(readOnly = true)

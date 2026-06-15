@@ -23,3 +23,29 @@ export async function loginApi(credentials: LoginRequest): Promise<LoginResponse
 
   return res.json() as Promise<LoginResponse>;
 }
+
+export interface RegisterPayload {
+  nombreCompleto: string;
+  email: string;
+  password: string;
+  telefono?: string;
+}
+
+export async function registerApi(payload: RegisterPayload): Promise<void> {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw {
+      status: res.status,
+      mensaje: error.message ?? "Error al registrarse",
+    };
+  }
+}

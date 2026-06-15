@@ -130,6 +130,12 @@ public ClasificacionAbcHistorialDTO ejecutarCalculo(
         .map(ValorInventarioProductoDTO::getValorInventario)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+    if (total.compareTo(BigDecimal.ZERO) <= 0) {
+    throw new BusinessException(
+        "El total de unidades despachadas es cero o negativo. " +
+        "Verifique los movimientos de inventario del período.");
+    }
+
     // ─── Calcular detalles en memoria (sin historial aún) ────────────
     List<ClasificacionAbcDetalle> detalles = new ArrayList<>();
     List<Integer> idsConRotacion = new ArrayList<>();
@@ -138,9 +144,15 @@ public ClasificacionAbcHistorialDTO ejecutarCalculo(
     for (ValorInventarioProductoDTO fila : valores) {
         BigDecimal valorProducto = fila.getValorInventario();
 
-        BigDecimal pctIndividual = valorProducto
-            .multiply(BigDecimal.valueOf(100))
-            .divide(total, 3, RoundingMode.HALF_UP);
+         if (valorProducto.compareTo(BigDecimal.ZERO) <= 0) {
+        log.warn("[ABC] Producto {} omitido — valor no positivo: {}",
+            fila.getProductoId(), valorProducto);
+        continue;
+    }
+
+    BigDecimal pctIndividual = valorProducto
+        .multiply(BigDecimal.valueOf(100))
+        .divide(total, 3, RoundingMode.HALF_UP);
 
         acumulado = acumulado.add(pctIndividual);
 
@@ -206,7 +218,6 @@ public ClasificacionAbcHistorialDTO ejecutarCalculo(
 
 
 @Async
-@Transactional
 public void recalcularAbcPostMovimiento() {
     // Buscar cualquier administrador activo como autor del recálculo automático.
     // Si no hay ninguno (caso raro), el recálculo se omite silenciosamente.

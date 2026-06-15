@@ -9,7 +9,7 @@ interface Props {
   numeroLote: string;
   productoNombre: string;
   cantidad: number;
-  onConfirm: () => void;   // callback para refrescar la tabla tras confirmar
+  onConfirm: () => void | Promise<void>;   // callback para refrescar la tabla tras confirmar
   onClose: () => void;
 }
 
@@ -41,7 +41,10 @@ export default function MarcarVencidoModal({
     setError(null);
     try {
       await marcarLoteVencidoApi(loteId, motivo.trim());
-      onConfirm();
+      // Esperar a que onConfirm se complete (que incluye marcar la alerta como leída)
+      if (onConfirm && typeof onConfirm === 'function') {
+        await onConfirm();
+      }
       onClose();
     } catch (e) {
       setError((e as Error).message);

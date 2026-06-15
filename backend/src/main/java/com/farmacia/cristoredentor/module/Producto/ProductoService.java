@@ -84,10 +84,10 @@ public class ProductoService {
 
     @Transactional(readOnly = true)
 public PaginatedResponseDto<ProductoDetalleDTO> listarFiltrado(
-        Integer page, Integer limit, String nombre, CategoriaProducto categoria) {
+        Integer page, Integer limit, String nombre, CategoriaProducto categoria, com.farmacia.cristoredentor.Enum.ClasificacionABC clasificacionAbc) {
 
     Pageable pageable = PageRequest.of(page, limit, Sort.by("nombre").ascending());
-    Page<Producto> resultado = productoRepo.findByFiltros(nombre, categoria, pageable);
+    Page<Producto> resultado = productoRepo.findByFiltros(nombre, categoria, clasificacionAbc, pageable);
 
     List<ProductoDetalleDTO> data = resultado.getContent()
         .stream()
@@ -212,6 +212,10 @@ private void validarProducto(ProductoRequestDTO dto){
                 "Existe el mismo producto en el inventario");
     }
 }
+
+    public void guardar(Producto producto) {
+        productoRepo.save(producto);
+    }
 
     private void validarPrecios(ProductoRequestDTO dto) {
         if (dto.getPrecioVenta().compareTo(dto.getPrecioCosto()) < 0)

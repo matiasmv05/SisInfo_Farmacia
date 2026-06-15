@@ -1,26 +1,33 @@
 package com.farmacia.cristoredentor.module.Alerta;
 
-import com.farmacia.cristoredentor.Entity.*;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.farmacia.cristoredentor.Entity.Alerta;
+import com.farmacia.cristoredentor.Entity.Lote;
+import com.farmacia.cristoredentor.Entity.Producto;
+import com.farmacia.cristoredentor.Entity.Usuario;
 import com.farmacia.cristoredentor.Enum.CriticidadAlerta;
 import com.farmacia.cristoredentor.Enum.TipoAlerta;
 import com.farmacia.cristoredentor.exceptions.BusinessException;
 import com.farmacia.cristoredentor.exceptions.ResourceNotFoundException;
-import com.farmacia.cristoredentor.module.Alerta.dto.*;
+import com.farmacia.cristoredentor.module.Alerta.dto.AlertaDetalleDTO;
+import com.farmacia.cristoredentor.module.Alerta.dto.AlertaMarcarLeidaDTO;
 import com.farmacia.cristoredentor.module.Configuracion_sistema.configuracionSistemaRepository;
 import com.farmacia.cristoredentor.module.Lote.LoteRepository;
 import com.farmacia.cristoredentor.module.Producto.ProductoRepository;
 import com.farmacia.cristoredentor.module.Usuario.usuarioRepository;
 import com.farmacia.cristoredentor.utils.PaginatedResponseDto;
-
-import org.springframework.data.domain.*;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.util.List;
 
 @Service
 public class AlertaService {
@@ -63,6 +70,9 @@ public class AlertaService {
     // Alertas de stock mínimo
     productoRepo.findProductosStockCriticoSinPaginar()
         .forEach(this::generarAlertaStockMinimo);
+
+    // ← NUEVO: Limpiar alertas obsoletas de stock que ya no aplican
+    limpiarAlertasStockObsoletas();
 }
 
     // -------------------------------------------------------------------------
@@ -83,6 +93,38 @@ public class AlertaService {
 
         return new PaginatedResponseDto<>(data, page, limit,
             (int) resultado.getTotalElements());
+    }
+
+    // -------------------------------------------------------------------------
+    // Resumen para KPIs
+    // -------------------------------------------------------------------------
+    @Transactional(readOnly = true)
+    public Map<String, Integer> obtenerResumen() {
+        List<Alerta> activas = alertaRepo.findByLeidaFalse();
+        int alta = 0;
+        int media = 0;
+        int baja = 0;
+        int vencimientos = 0;
+
+        for (Alerta a : activas) {
+            if (a.getCriticidad() == CriticidadAlerta.alta) alta++;
+            else if (a.getCriticidad() == CriticidadAlerta.media) media++;
+            else if (a.getCriticidad() == CriticidadAlerta.baja) baja++;
+
+            if (a.getTipo() == TipoAlerta.vencimiento_rojo || 
+                a.getTipo() == TipoAlerta.vencimiento_amarillo ||
+                a.getTipo() == TipoAlerta.vencimiento_verde) {
+                vencimientos++;
+            }
+        }
+
+        Map<String, Integer> map = new HashMap<>();
+        map.put("total", activas.size());
+        map.put("alta", alta);
+        map.put("media", media);
+        map.put("baja", baja);
+        map.put("vencimientos", vencimientos);
+        return map;
     }
 
     // -------------------------------------------------------------------------
@@ -190,6 +232,24 @@ public class AlertaService {
             .leida(false)
             .fechaGeneracion(OffsetDateTime.now())
             .build());
+    }
+
+    // -------------------------------------------------------------------------
+    // Limpiar alertas de stock que ya no aplican (stock ya está por encima del mínimo)
+    // -------------------------------------------------------------------------
+    private void limpiarAlertasStockObsoletas() {
+        List<Alerta> alertasStockActivas = alertaRepo
+            .findByTipoAndLeidaFalseOrderByFechaGeneracionDesc(TipoAlerta.stock_minimo);
+
+        for (Alerta alerta : alertasStockActivas) {
+            Producto producto = alerta.getProducto();
+            // Si el stock actual YA NO está por debajo del mínimo, marcar como leída
+            if (producto.getStockTotal() >= producto.getStockMinimo()) {
+                alerta.setLeida(true);
+                alerta.setFechaLectura(OffsetDateTime.now());
+                alertaRepo.save(alerta);
+            }
+        }
     }
 
     // -------------------------------------------------------------------------

@@ -6,6 +6,8 @@ import { useInventario, getStockStatus } from "../../context/InventarioContext";
 import { ProductoDetalle, ClaseAbc } from "../../types/Inventario.types";
 import ProductoDetalleModal from "./Productodetallemodal";
 import ProductoEditModal    from "./Productoeditmodal";
+import { useAuth } from "../../context/Authcontext";
+
 
 // ────────────────────────────────────────────────────────────────────────────
 const stockStatusConfig = {
@@ -121,6 +123,8 @@ const ActionMenu: React.FC<{
 
 // ── Tabla principal ──────────────────────────────────────────────────────────
 export const InventarioTable: React.FC = () => {
+  const { user } = useAuth();         
+  const esAdmin = user?.rol === "ADMINISTRADOR"; 
   const {
     items, loading, error,
     currentPage, setCurrentPage,
@@ -193,14 +197,18 @@ export const InventarioTable: React.FC = () => {
                   <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant text-center">CLASE ABC</th>
                   <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant text-right">PRECIO VENTA</th>
                   {/* Columna Activo reemplaza a la antigua acción de Desactivar */}
-                  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant text-center">ACTIVO</th>
-                  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant text-center">ACCIONES</th>
+{esAdmin && (
+  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant text-center">ACTIVO</th>
+)}
+{esAdmin && (
+  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant text-center">ACCIONES</th>
+)}
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/40">
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-16 text-center">
+<td colSpan={esAdmin ? 11 : 9} className="py-16 text-center">
                       <span className="material-symbols-outlined text-[48px] text-outline/40 block">
                         inventory_2
                       </span>
@@ -257,19 +265,23 @@ export const InventarioTable: React.FC = () => {
                           Bs {item.precioVenta.toFixed(2)}
                         </td>
                         {/* Toggle activo — siempre visible */}
-                        <td className="py-[12px] px-4 text-center">
-                          <ActiveToggle item={item} />
-                        </td>
+                        {esAdmin && (
+  <td className="py-[12px] px-4 text-center">
+    <ActiveToggle item={item} />
+  </td>
+)}
                         {/* Menú de acciones — visible en hover */}
-                        <td className="py-[12px] px-4 text-center">
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex justify-center">
-                            <ActionMenu
-                              item={item}
-                              onEdit={setEditProduct}
-                              onDetail={setDetailProduct}
-                            />
-                          </div>
-                        </td>
+                        {esAdmin && (
+  <td className="py-[12px] px-4 text-center">
+    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex justify-center">
+      <ActionMenu
+        item={item}
+        onEdit={setEditProduct}
+        onDetail={setDetailProduct}
+      />
+    </div>
+  </td>
+)}
                       </tr>
                     );
                   })
