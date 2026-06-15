@@ -5,9 +5,9 @@ import {
 } from '../types/Producto.types';
 
 
-import { ProductoDetalle, ProductoRequest, PaginatedResponse, CategoriaProducto } from '../types/Inventario.types';
+import { ProductoDetalle, ProductoRequest, PaginatedResponse, CategoriaProducto, ClaseAbc } from '../types/Inventario.types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8082";
 
 function getAuthHeaders(): HeadersInit {
   const token =
@@ -26,12 +26,16 @@ export async function fetchProductosApi(params: {
   limit?: number;
   nombre?: string;
   categoria?: CategoriaProducto | '';
+  clasificacionAbc?: ClaseAbc | 'ALL';
 }): Promise<PaginatedResponse<ProductoDetalle>> {
   const query = new URLSearchParams();
   query.set('page',  String(params.page  ?? 0));
   query.set('limit', String(params.limit ?? 20));
   if (params.nombre)   query.set('nombre',    params.nombre);
   if (params.categoria) query.set('categoria', params.categoria);
+  if (params.clasificacionAbc && params.clasificacionAbc !== 'ALL') {
+    query.set('clasificacionAbc', params.clasificacionAbc);
+  }
  
   const res = await fetch(`${BASE_URL}/api/productos?${query}`, {
     headers: getAuthHeaders(),

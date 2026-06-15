@@ -60,4 +60,37 @@ public class ReporteController {
         service.eliminar(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/exportar")
+    public ResponseEntity<?> exportar(
+            @RequestParam String tipo,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate fechaFin,
+            org.springframework.security.core.Authentication authentication) {
+
+        try {
+            Integer usuarioId = (Integer) authentication.getPrincipal();
+            byte[] pdfBytes = service.exportarReportePdf(tipo, fechaInicio, fechaFin, usuarioId);
+
+            String filename = String.format("reporte_%s_%s.pdf", 
+                    tipo.toLowerCase(), 
+                    LocalDate.now().toString());
+
+            return ResponseEntity.ok()
+                    .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "application/pdf")
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                    .body(pdfBytes);
+
+        } catch (com.farmacia.cristoredentor.exceptions.BusinessException e) {
+            // Retornar mensaje informativo si no existen datos
+            return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST)
+                    .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "application/json")
+                    .body(java.util.Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "application/json")
+                    .body(java.util.Map.of("message", "Error interno al generar el reporte: " + e.getMessage()));
+        }
+    }
 }

@@ -501,7 +501,7 @@ export default function OrdenesPage() {
   // Cargar proveedores para el modal (reutilizamos el endpoint de proveedores)
   useEffect(() => {
     fetch(
-      `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"}/api/proveedores?activo=true&page=0&limit=100`,
+      `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8082"}/api/proveedores?activo=true&page=0&limit=100`,
       {
         headers: {
           "Content-Type": "application/json",

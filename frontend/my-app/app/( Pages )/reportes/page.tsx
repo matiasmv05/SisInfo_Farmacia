@@ -1,21 +1,59 @@
 'use client';
 
 import React, { useState } from 'react';
+import { exportarReporteApi } from '../../api/Reporte.api';
 import './reportes.css';
 
 export default function ReportesPage() {
+  const [fechaInicio, setFechaInicio] = useState<string>('');
+  const [fechaFin, setFechaFin] = useState<string>('');
+  const [loadingReport, setLoadingReport] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
-  const showToast = (message: string) => {
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToastMessage(message);
+    setToastType(type);
     setTimeout(() => {
       setToastMessage(null);
-    }, 3000);
+    }, 4500);
   };
 
-  const handleGenerarReporte = (nombre: string) => {
-    // Aquí iría la lógica de jsPDF u otra librería de generación
-    showToast(`Generando reporte: ${nombre}...`);
+  const handleGenerarReporte = async (tipo: string, nombre: string) => {
+    if (tipo === 'PERDIDAS' && (!fechaInicio || !fechaFin)) {
+      showToast('Por favor, selecciona Fecha de Inicio y Fin para el reporte de pérdidas.', 'error');
+      return;
+    }
+
+    setLoadingReport(tipo);
+    showToast(`Generando reporte de ${nombre}...`, 'success');
+
+    const response = await exportarReporteApi({
+      tipo,
+      fechaInicio: fechaInicio || undefined,
+      fechaFin: fechaFin || undefined,
+    });
+
+    setLoadingReport(null);
+
+    if (response.success) {
+      const filename = `reporte_${tipo.toLowerCase()}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      const url = window.URL.createObjectURL(response.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showToast(`¡Reporte de ${nombre} descargado correctamente!`, 'success');
+    } else {
+      showToast(response.message, 'error');
+    }
+  };
+
+  const handlePlaceholderReport = (nombre: string) => {
+    showToast(`El reporte "${nombre}" no está habilitado temporalmente.`, 'error');
   };
 
   return (
@@ -23,7 +61,7 @@ export default function ReportesPage() {
       {/* CABECERA */}
       <header className="page-header">
         <h1>Reportes Operativos y Financieros</h1>
-        <p>Exporte documentos en formato PDF para análisis y auditoría</p>
+        <p>Exporte documentos en formato PDF con gráficos estadísticos integrados para análisis y auditoría</p>
       </header>
 
       {/* CARD: FILTROS GLOBALES */}
@@ -37,46 +75,58 @@ export default function ReportesPage() {
         <div className="filters-grid">
           <div className="filter-group">
             <label htmlFor="inputFechaInicio">Fecha de Inicio</label>
-            <input type="date" id="inputFechaInicio" className="filter-input" />
+            <input 
+              type="date" 
+              id="inputFechaInicio" 
+              className="filter-input" 
+              value={fechaInicio}
+              onChange={(e) => setFechaInicio(e.target.value)}
+            />
           </div>
           <div className="filter-group">
             <label htmlFor="inputFechaFin">Fecha de Fin</label>
-            <input type="date" id="inputFechaFin" className="filter-input" />
+            <input 
+              type="date" 
+              id="inputFechaFin" 
+              className="filter-input" 
+              value={fechaFin}
+              onChange={(e) => setFechaFin(e.target.value)}
+            />
           </div>
           <div className="filter-group">
-            <label htmlFor="selectCategoria">Categoría (Opcional)</label>
-            <select id="selectCategoria" className="filter-input">
-              <option value="">Todas las Categorías</option>
-              <option value="Analgésicos">Analgésicos</option>
-              <option value="Antibióticos">Antibióticos</option>
-              <option value="Antihistamínicos">Antihistamínicos</option>
-              <option value="Cardiovascular">Cardiovascular</option>
-              <option value="Diabetes">Diabetes</option>
-            </select>
+            <label>Estado de los Filtros</label>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', padding: '10px 0' }}>
+              {fechaInicio && fechaFin 
+                ? `Rango activo: ${fechaInicio} al ${fechaFin}` 
+                : 'Mostrando datos generales sin filtro de fecha.'}
+            </div>
           </div>
         </div>
       </section>
 
       {/* CUADRÍCULA DE REPORTES */}
       <section className="reports-grid">
-        {/* CARD 1: Movimientos de Inventario */}
+        
+        {/* CARD 1: Valorización de Inventario */}
         <article className="report-card">
           <div className="report-card-top">
             <div className="report-icon-box">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
               </svg>
             </div>
-            <h3>Movimientos de Inventario</h3>
+            <h3>Reporte de Inventario</h3>
             <p className="report-desc">
-              Resumen detallado de ingresos (recepciones) y egresos (salidas/ventas) de productos durante el período seleccionado.
+              Valorización total del inventario actual por lote, clasificaciones ABC de productos y estadísticas generales.
             </p>
           </div>
           <button 
-            onClick={() => handleGenerarReporte("Movimientos de Inventario")}
+            onClick={() => handleGenerarReporte("INVENTARIO", "Inventario")}
             className="c-btn c-btn--report-default w-full"
+            disabled={loadingReport !== null}
           >
-            Generar PDF
+            {loadingReport === 'INVENTARIO' ? 'Generando...' : 'Generar PDF'}
           </button>
         </article>
 
@@ -90,43 +140,46 @@ export default function ReportesPage() {
                 <line x1="12" y1="16" x2="12.01" y2="16"></line>
               </svg>
             </div>
-            <h3>Productos por Vencer</h3>
+            <h3>Reporte de Pérdidas</h3>
             <p className="report-desc">
-              Listado crítico de lotes próximos a caducar o ya vencidos. Vital para auditorías y prevención de pérdidas.
+              Medicamentos dados de baja por caducidad, cantidades y pérdidas económicas por período (requiere filtros de fecha).
             </p>
           </div>
           <button 
-            onClick={() => handleGenerarReporte("Productos por Vencer")}
+            onClick={() => handleGenerarReporte("PERDIDAS", "Pérdidas")}
             className="c-btn c-btn--report-danger w-full"
+            disabled={loadingReport !== null}
           >
-            Generar PDF de Alerta
+            {loadingReport === 'PERDIDAS' ? 'Generando...' : 'Generar PDF de Pérdidas'}
           </button>
         </article>
 
-        {/* CARD 3: Valorización del Inventario */}
+        {/* CARD 3: Reporte de Alertas de Stock y Vencimiento */}
         <article className="report-card">
           <div className="report-card-top">
-            <div className="report-icon-box">
+            <div className="report-icon-box" style={{ backgroundColor: '#fff7ed', color: '#ea580c' }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="1" x2="12" y2="23"></line>
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
               </svg>
             </div>
-            <h3>Valorización de Inventario</h3>
+            <h3>Reporte de Alertas</h3>
             <p className="report-desc">
-              Estimación del valor total del stock actual almacenado, calculado en base al costo unitario de cada lote disponible.
+              Resumen crítico de productos con existencias por debajo del stock mínimo y lotes próximos a vencer.
             </p>
           </div>
           <button 
-            onClick={() => handleGenerarReporte("Valorización de Inventario")}
+            onClick={() => handleGenerarReporte("ALERTAS", "Alertas")}
             className="c-btn c-btn--report-default w-full"
+            disabled={loadingReport !== null}
           >
-            Generar PDF
+            {loadingReport === 'ALERTAS' ? 'Generando...' : 'Generar PDF de Alerta'}
           </button>
         </article>
 
         {/* CARD 4: Reporte de Proveedores */}
-        <article className="report-card">
+        <article className="report-card" style={{ opacity: 0.7 }}>
           <div className="report-card-top">
             <div className="report-icon-box">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -138,19 +191,20 @@ export default function ReportesPage() {
             </div>
             <h3>Órdenes de Proveedores</h3>
             <p className="report-desc">
-              Listado de compras y recepciones agrupadas por proveedor. Permite evaluar volúmenes de compra y fiabilidad.
+              Listado de compras y recepciones agrupadas por proveedor. Permite evaluar volúmenes de compra. (No habilitado).
             </p>
           </div>
           <button 
-            onClick={() => handleGenerarReporte("Órdenes de Proveedores")}
+            onClick={() => handlePlaceholderReport("Órdenes de Proveedores")}
             className="c-btn c-btn--report-default w-full"
+            disabled={loadingReport !== null}
           >
-            Generar PDF
+            No Disponible
           </button>
         </article>
 
         {/* CARD 5: Clasificación ABC */}
-        <article className="report-card">
+        <article className="report-card" style={{ opacity: 0.7 }}>
           <div className="report-card-top">
             <div className="report-icon-box">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -158,21 +212,22 @@ export default function ReportesPage() {
                 <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
               </svg>
             </div>
-            <h3>Clasificación ABC</h3>
+            <h3>Movimientos Consolidados</h3>
             <p className="report-desc">
-              Análisis de rotación de inventario segmentando los productos en categorías A (alta), B (media) y C (baja rotación).
+              Resumen de entradas y salidas generales del inventario durante el ciclo actual. (No habilitado).
             </p>
           </div>
           <button 
-            onClick={() => handleGenerarReporte("Clasificación ABC")}
+            onClick={() => handlePlaceholderReport("Movimientos Consolidados")}
             className="c-btn c-btn--report-default w-full"
+            disabled={loadingReport !== null}
           >
-            Generar PDF
+            No Disponible
           </button>
         </article>
 
         {/* CARD 6: Auditoría de Usuarios */}
-        <article className="report-card">
+        <article className="report-card" style={{ opacity: 0.7 }}>
           <div className="report-card-top">
             <div className="report-icon-box">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -182,16 +237,17 @@ export default function ReportesPage() {
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
               </svg>
             </div>
-            <h3>Auditoría de Accesos</h3>
+            <h3>Historial de Exportaciones</h3>
             <p className="report-desc">
-              Registro de actividad del personal, estados de cuenta (activos/inactivos) y roles dentro del sistema.
+              Auditoría y control de exportaciones de reportes descargados por el personal operativo. (No habilitado).
             </p>
           </div>
           <button 
-            onClick={() => handleGenerarReporte("Auditoría de Accesos")}
+            onClick={() => handlePlaceholderReport("Historial de Exportaciones")}
             className="c-btn c-btn--report-default w-full"
+            disabled={loadingReport !== null}
           >
-            Generar PDF
+            No Disponible
           </button>
         </article>
 
@@ -199,11 +255,19 @@ export default function ReportesPage() {
 
       {/* TOAST NOTIFICATION CONTAINER */}
       <div className="toast-container">
-        <div className={`toast toast--success ${toastMessage ? 'toast--show' : ''}`}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
+        <div className={`toast toast--${toastType} ${toastMessage ? 'toast--show' : ''}`}>
+          {toastType === 'success' ? (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          ) : (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          )}
           <span>{toastMessage}</span>
         </div>
       </div>

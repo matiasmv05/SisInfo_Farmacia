@@ -70,7 +70,7 @@ function reducer(state: ProveedorState, action: Action): ProveedorState {
         ...state,
         loading: false,
         proveedores: action.payload.data,
-        total: action.payload.totalElements ?? action.payload.total ?? 0,
+        total: action.payload.totalElements ?? 0,
       };
     case 'FETCH_ERROR':
       return { ...state, loading: false, error: action.payload };

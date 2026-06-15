@@ -38,6 +38,16 @@ public class ClasificacionAbcController {
         return ResponseEntity.ok(service.calcularManual(usuarioId, dto));
     }
 
+    // POST /api/clasificacion-abc/actualizar
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PostMapping("/actualizar")
+    public ResponseEntity<com.farmacia.cristoredentor.module.ClasificacionAbc.dto.ClasificacionAbcActualizarResponseDTO> actualizarABC(
+            Authentication authentication) {
+        
+        Integer usuarioId = (Integer) authentication.getPrincipal();
+        return ResponseEntity.ok(service.actualizarClasificacionAbcManual(usuarioId));
+    }
+
     // GET /api/clasificacion-abc/ultimo
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @GetMapping("/ultimo")

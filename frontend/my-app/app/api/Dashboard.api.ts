@@ -3,7 +3,7 @@
 import { AlertaDetalleDTO, PaginatedResponse } from "../types/dashboard.types";
 import { AbcHistorialDTO } from "../types/Abc.types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8082";
 
 function getAuthHeaders(): HeadersInit {
   const token =
